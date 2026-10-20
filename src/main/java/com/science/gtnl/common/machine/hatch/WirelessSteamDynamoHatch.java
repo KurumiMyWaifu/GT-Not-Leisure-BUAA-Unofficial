@@ -225,13 +225,12 @@ public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidSt
     @Override
     public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
         super.onFirstTick(aBaseMetaTileEntity);
-        ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
+        if (!aBaseMetaTileEntity.isServerSide()) return;
 
+        ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
         isInTeam = true;
         teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
         steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
-
-        if (!aBaseMetaTileEntity.isServerSide()) return;
         tryFetchingSteam();
     }
 

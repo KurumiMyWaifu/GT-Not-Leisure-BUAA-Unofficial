@@ -14,6 +14,7 @@ import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
+import net.minecraftforge.common.UsernameCache;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -22,7 +23,6 @@ import com.google.gson.JsonParser;
 import com.gtnewhorizon.gtnhlib.teams.Team;
 import com.gtnewhorizon.gtnhlib.teams.TeamDataTransferReason;
 import com.gtnewhorizon.gtnhlib.teams.TeamManager;
-import com.gtnewhorizon.gtnhlib.util.ServerPlayerUtils;
 import com.mojang.authlib.GameProfile;
 import com.science.gtnl.ScienceNotLeisure;
 
@@ -93,7 +93,9 @@ public class TeamNetworkManager {
     }
 
     public static String getPlayerName(UUID playerId) {
-        return ServerPlayerUtils.getPlayerName(playerId);
+        if (playerId == null) return "Unknown";
+        String knownName = UsernameCache.getMap().get(playerId);
+        return knownName != null ? knownName : playerId.toString();
     }
 
     public static UUID getPlayerId(String playerName) {

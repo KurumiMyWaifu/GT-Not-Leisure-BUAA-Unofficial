@@ -7,7 +7,8 @@ affiliated with, endorsed by, or supported by the upstream authors.
 - Upstream base revision: `082483e468942eb1949975f08bc900510c91d930`
 - Upstream version string: `0.2.7-pre3-dev-290.37+082483e468`
 - Target modpack: GT: New Horizons `2.9.0-beta-3` (Minecraft 1.7.10, Forge 10.13.4.1614)
-- Modification date: **2026-10-18**
+- Modification date: **2026-10-18** (glass replacement); **2026-10-20**
+  (client crash fixes)
 - Modified by: `KurumiMyWaifu` (`https://github.com/KurumiMyWaifu`)
 - License of the modifications: **GNU Lesser General Public License v3.0
   (LGPL-3.0)**, the same license as the upstream project. See `LICENSE.txt`.
@@ -95,7 +96,51 @@ Files:
 - `src/main/resources/assets/sciencenotleisure/quest/Quests/Tier075Superheat-GTNotLeisure75SteamAge==/-ryXkmJDfRKuEZdjrMQfcfw==.json`
 - `src/main/resources/assets/sciencenotleisure/quest/Quests/Tier0999Supercri-GTNotLeisure99SteamAge==/-ftAZh6RtRQ-EQ3depF4aGw==.json`
 
-### 4. Repository notice
+### 4. Client crash fixes (2026-10-20)
+
+These are separate from the glass replacement. They fix a client crash that
+occurred after placing/loading a GTNL Incubator.
+
+#### 4.1 Incubator render-packet color
+
+`Incubator` sent `PacketBioVatRenderer` with `Color.DARK_GRAY.getRGB()`, which
+contains an alpha channel (`0xFF444444`). The packet only encodes the RGB bytes,
+so the receiver reconstructs `0x00444444`; the packet checksum therefore never
+matched. The client logged `BW Packet was corrupted or modified!`, then
+`GTNetwork.decode` called `setINetHandler` on the `null` packet and threw a
+`NullPointerException`, disconnecting the client. The color is now masked to RGB
+with `& 0xFFFFFF` at all four send sites.
+
+File:
+
+- `src/main/java/com/science/gtnl/common/machine/multiblock/structuralReconstructionPlan/Incubator.java`
+
+#### 4.2 Wireless steam hatch client-side NPE
+
+`WirelessSteamEnergyHatch.onFirstTick` and
+`WirelessSteamDynamoHatch.onFirstTick` read the owner UUID and called
+`TeamNetworkManager.getTeamId` before checking `isServerSide()`. On the client,
+`UsernameCache.getLastKnownUsername` threw for UUIDs that were not in the local
+cache. The server-side guard now runs first, matching
+`SteamMultiMachineBase.onFirstTick`.
+
+Files:
+
+- `src/main/java/com/science/gtnl/common/machine/hatch/WirelessSteamEnergyHatch.java`
+- `src/main/java/com/science/gtnl/common/machine/hatch/WirelessSteamDynamoHatch.java`
+
+#### 4.3 Null-safe player name lookup
+
+`TeamNetworkManager.getPlayerName(UUID)` now reads
+`UsernameCache.getMap()` directly and falls back to the UUID string when the
+name is not cached. This also fixes the server-side Waila `NullPointerException`
+in `SteamMultiMachineBase.getWailaNBTData`.
+
+File:
+
+- `src/main/java/com/science/gtnl/utils/world/teams/TeamNetworkManager.java`
+
+### 5. Repository notice
 
 - Added this `MODIFICATIONS.md`.
 - Added a short "unofficial modified fork" notice at the top of `README.md`
@@ -108,6 +153,11 @@ Files:
 - `StructureUtility.ofBlock(GregTechAPI.sBlockGlass1, 10)` and
   `ItemList.ReinforcedGlass.get(...)` are present in the compiled bytecode.
 - All modified quest JSON files parse as valid JSON.
+- The compiled `Incubator` masks the packet color with `0xFFFFFF` at all four
+  send sites.
+- Both wireless steam hatch `onFirstTick` implementations check
+  `isServerSide()` before any team/username lookup.
+- `TeamNetworkManager.getPlayerName` does not throw for uncached UUIDs.
 
 ## Building
 
