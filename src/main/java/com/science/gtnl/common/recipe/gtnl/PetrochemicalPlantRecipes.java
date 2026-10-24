@@ -118,7 +118,10 @@ public class PetrochemicalPlantRecipes implements IRecipePool {
 
         RecipeBuilder.builder()
             .itemInputs(
-                BioCultureEnum.getPetriDish(BioCultureEnum.XenoxeneXenoxsis.bioCulture),
+                // Non-consumed catalyst, same convention as integrated circuits (stackSize 0).
+                GTUtility.copyAmount(
+                    0,
+                    BioCultureEnum.getPetriDish(BioCultureEnum.XenoxeneXenoxsis.bioCulture)),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.AntimonyTrioxide, 16),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Osmium, 16))
             .fluidInputs(

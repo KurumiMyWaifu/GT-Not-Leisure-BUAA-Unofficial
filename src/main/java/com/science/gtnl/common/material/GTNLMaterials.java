@@ -17,17 +17,17 @@ public class GTNLMaterials implements Runnable {
         .addPrefix(OrePrefixes.blockCasing)
         .addPrefix(OrePrefixes.blockCasingAdvanced);
 
-    // TODO: Enable in 2.9.0-beta2
+    // Bronze casing (31_766 + 300) is still intentionally disabled.
     // public static Werkstoff Bronze = new Werkstoff(
     // Materials.Bronze,
     // ADD_CASINGS_ONLY,
     // Werkstoff.Types.MIXTURE,
     // 31_766 + 300);
-    // public static Werkstoff Neutronium = new Werkstoff(
-    // Materials.Neutronium,
-    // ADD_CASINGS_ONLY,
-    // Werkstoff.Types.ELEMENT,
-    // 31_766 + 129);
+    // Neutronium casing is used by AtomicEnergyExcitationPlant and
+    // HighwayToHell. Without this Werkstoff, BWBlockCasings meta
+    // 31_766 + 129 has no material and shows as "null Casing" /
+    // "Bolted null Casing".
+    public static Werkstoff Neutronium;
 
     public static Werkstoff Hexanitrohexaazaisowurtzitane;
     public static Werkstoff CrudeHexanitrohexaazaisowurtzitane;
@@ -167,6 +167,11 @@ public class GTNLMaterials implements Runnable {
 
     @Override
     public void run() {
+        Neutronium = new Werkstoff(
+            Materials.Neutronium,
+            ADD_CASINGS_ONLY,
+            Werkstoff.Types.ELEMENT,
+            31_766 + 129);
         Hexanitrohexaazaisowurtzitane = new Werkstoff(
             new short[] { 47, 53, 57 },
             "Hexanitrohexaazaisowurtzitane",
