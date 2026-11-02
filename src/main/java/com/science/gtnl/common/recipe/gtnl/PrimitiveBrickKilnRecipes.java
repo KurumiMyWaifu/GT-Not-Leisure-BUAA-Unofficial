@@ -4,21 +4,17 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.dreammaster.item.NHItemList;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
+import com.science.gtnl.compat.newhorizons.NHCoreRecipes;
 import com.science.gtnl.utils.enums.GTNLItemList;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
-import cpw.mods.fml.common.Optional;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
-import gregtech.api.util.GTUtility;
 
 public class PrimitiveBrickKilnRecipes implements IRecipePool {
 
@@ -30,9 +26,9 @@ public class PrimitiveBrickKilnRecipes implements IRecipePool {
 
         RecipeBuilder.builder()
             .itemInputs(
-                GTUtility.getIntegratedCircuit(1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Bronze, 4),
                 new ItemStack(Blocks.brick_block, 1))
+            .circuit(1)
             .itemOutputs(ItemList.Casing_BronzePlatedBricks.get(1))
             .duration(200)
             .eut(16)
@@ -41,9 +37,9 @@ public class PrimitiveBrickKilnRecipes implements IRecipePool {
 
         RecipeBuilder.builder()
             .itemInputs(
-                GTUtility.getIntegratedCircuit(2),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Bronze, 3),
                 new ItemStack(Blocks.brick_block, 2))
+            .circuit(2)
             .itemOutputs(ItemList.Hull_Bronze_Bricks.get(1))
             .duration(200)
             .eut(16)
@@ -142,22 +138,7 @@ public class PrimitiveBrickKilnRecipes implements IRecipePool {
             .eut(16)
             .addTo(PBKR);
 
-        if (Mods.NewHorizonsCoreMod.isModLoaded() && Mods.Railcraft.isModLoaded()) loadNHRecipe();
+        NHCoreRecipes.primitiveBrickKiln();
     }
 
-    @Optional.Method(modid = "dreamcraft")
-    public void loadNHRecipe() {
-        RecipeBuilder.builder()
-            .itemInputs(NHItemList.CokeOvenBrick.get(4))
-            .itemOutputs(ItemList.CokeOvenCasing.get(1))
-            .duration(200)
-            .eut(16)
-            .addTo(PBKR);
-        RecipeBuilder.builder()
-            .itemInputs(NHItemList.AdvancedCokeOvenBrick.get(4))
-            .itemOutputs(GTModHandler.getModItem(Mods.Railcraft.ID, "machine.alpha", 1, 12))
-            .duration(200)
-            .eut(16)
-            .addTo(PBKR);
-    }
 }

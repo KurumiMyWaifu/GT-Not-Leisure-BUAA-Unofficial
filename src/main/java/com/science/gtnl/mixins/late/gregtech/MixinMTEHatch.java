@@ -1,7 +1,11 @@
 package com.science.gtnl.mixins.late.gregtech;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
@@ -13,137 +17,143 @@ import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.science.gtnl.api.mixinHelper.IMultiblockRecipeMap;
-import com.science.gtnl.config.MainConfig;
-import com.science.gtnl.utils.Utils;
-import com.science.gtnl.utils.item.ItemUtils;
+import com.science.gtnl.api.mixinHelper.IInterfaceNameController;
+import com.science.gtnl.api.mixinHelper.IInterfaceNameHatch;
+import com.science.gtnl.common.me.InterfaceNameControllerContext;
+import com.science.gtnl.common.me.InterfaceNameLocalization;
 
-import appeng.api.util.IInterfaceViewable;
 import appeng.helpers.ICustomNameObject;
-import cpw.mods.fml.common.registry.GameRegistry;
-import gregtech.api.interfaces.IConfigurationCircuitSupport;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEBasicTank;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.metatileentity.implementations.MTEHatchInput;
 import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
+import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
+import gregtech.api.recipe.RecipeMap;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
 @Mixin(value = MTEHatch.class, remap = false)
-public abstract class MixinMTEHatch extends MTEBasicTank implements IMultiblockRecipeMap, ICustomNameObject {
-
-    @Unique
-    private String gtnl$multiBlockRecipeMapName = null;
+public abstract class MixinMTEHatch extends MTEBasicTank implements ICustomNameObject, IInterfaceNameHatch {
 
     @Unique
     private String gtnl$customName = "";
+
+    @Unique
+    private WeakReference<MTEMultiBlockBase> gtnl$interfaceNameController;
+
+    @Unique
+    private long gtnl$interfaceNameStructureVersion;
+
+    @Unique
+    private Map<MTEMultiBlockBase, Long> gtnl$interfaceNameControllers;
 
     public MixinMTEHatch(int aID, String aName, String aNameRegional, int aTier, int aInvSlotCount, String aDescription,
         ITexture... aTextures) {
         super(aID, aName, aNameRegional, aTier, aInvSlotCount, aDescription, aTextures);
     }
 
-    @Override
-    public String gtnl$getRecipeMapName() {
-        return gtnl$multiBlockRecipeMapName;
+    @Inject(method = "loadNBTData", at = @At("TAIL"))
+    private void gtnl$loadCustomName(NBTTagCompound aNBT, CallbackInfo callbackInfo) {
+        gtnl$customName = aNBT.getString("gtnl$customName");
     }
 
-    @Override
-    public void gtnl$setRecipeMapName(String recipeMap) {
-        gtnl$multiBlockRecipeMapName = recipeMap;
-    }
-
-    @Override
-    public void setCustomName(String name) {
-        gtnl$customName = name;
-    }
-
-    @Override
-    public boolean hasCustomName() {
-        return !gtnl$customName.isEmpty() || MainConfig.machine.enableHatchInterfaceTerminalEnhance;
-    }
-
-    @Unique
-    private String gtnl$getAutoNameKey() {
-        StringBuilder sb = new StringBuilder();
-        MTEHatch hatch = (MTEHatch) (Object) this;
-
-        if (hatch instanceof IConfigurationCircuitSupport circuitHatch) {
-            ItemStack circuit = getStackInSlot(circuitHatch.getCircuitSlot());
-            if (circuit != null) {
-                sb.append("gt_circuit_")
-                    .append(circuit.getItemDamage())
-                    .append('_');
-            }
-        }
-
-        if (hatch instanceof MTEHatchInput inputHatch
-            && (gtnl$multiBlockRecipeMapName != null || inputHatch.mRecipeMap != null)) {
-            sb.append("extra_start_")
-                .append(
-                    gtnl$multiBlockRecipeMapName != null ? gtnl$multiBlockRecipeMapName
-                        : inputHatch.mRecipeMap.unlocalizedName)
-                .append("_extra_end_");
-        }
-        if (hatch instanceof MTEHatchInputBus inputBus
-            && (gtnl$multiBlockRecipeMapName != null || inputBus.mRecipeMap != null)) {
-            sb.append("extra_start_")
-                .append(
-                    gtnl$multiBlockRecipeMapName != null ? gtnl$multiBlockRecipeMapName
-                        : inputBus.mRecipeMap.unlocalizedName)
-                .append("_extra_end_");
-        }
-
-        for (int i = 0; i < 10 && i < mInventory.length; i++) {
-            ItemStack stack = mInventory[i];
-            if (!ItemUtils.isExtraItem(stack)) continue;
-
-            String registryName = GameRegistry.findUniqueIdentifierFor(stack.getItem())
-                .toString();
-
-            sb.append("extra_item_start_")
-                .append(registryName)
-                .append("@")
-                .append(stack.getItemDamage());
-
-            if (stack.hasDisplayName()) {
-                sb.append("{")
-                    .append(stack.getDisplayName())
-                    .append("}");
-            }
-
-            sb.append("extra_item_end_");
-            break;
-        }
-
-        return sb.append(super.getMachineCraftingIcon().getUnlocalizedName())
-            .toString();
+    @Inject(method = "saveNBTData", at = @At("TAIL"))
+    private void gtnl$saveCustomName(NBTTagCompound aNBT, CallbackInfo callbackInfo) {
+        if (!gtnl$customName.isEmpty()) aNBT.setString("gtnl$customName", gtnl$customName);
     }
 
     @Override
     public String getCustomName() {
-        if (!gtnl$customName.isEmpty()) return gtnl$customName;
-        if (!MainConfig.machine.enableHatchInterfaceTerminalEnhance) return getLocalName();
-        return gtnl$getAutoNameKey();
+        return gtnl$customName;
+    }
+
+    @Override
+    public boolean hasCustomName() {
+        return !gtnl$customName.isEmpty();
+    }
+
+    @Override
+    public void setCustomName(String name) {
+        gtnl$customName = name == null ? "" : name;
+    }
+
+    @Override
+    public void setInterfaceNameController(MTEMultiBlockBase controller) {
+        if (!(controller instanceof IInterfaceNameController controllerInfo)) return;
+        long version = controllerInfo.getInterfaceNameStructureVersion();
+        if (gtnl$interfaceNameControllers == null) gtnl$interfaceNameControllers = new WeakHashMap<>();
+        gtnl$interfaceNameControllers.put(controller, version);
+        if (gtnl$interfaceNameController != null && gtnl$interfaceNameController.get() == controller
+            && gtnl$interfaceNameStructureVersion == version) {
+            return;
+        }
+        gtnl$interfaceNameController = new WeakReference<>(controller);
+        gtnl$interfaceNameStructureVersion = version;
+    }
+
+    @Override
+    public Set<MTEMultiBlockBase> getInterfaceNameControllers() {
+        if (gtnl$interfaceNameControllers == null) return Set.of();
+        gtnl$interfaceNameControllers.entrySet()
+            .removeIf(
+                entry -> !entry.getKey()
+                    .isValid() || !(entry.getKey() instanceof IInterfaceNameController info)
+                    || entry.getValue() != info.getInterfaceNameStructureVersion());
+        return gtnl$interfaceNameControllers.keySet()
+            .stream()
+            .filter(controller -> controller.mMachine)
+            .collect(Collectors.toUnmodifiableSet());
+    }
+
+    @Override
+    public RecipeMap<?> getInterfaceNameRecipeMap() {
+        MTEMultiBlockBase controller = gtnl$interfaceNameController == null ? null : gtnl$interfaceNameController.get();
+        RecipeMap<?> recipeMap = controller instanceof IInterfaceNameController info && controller.isValid()
+            && gtnl$interfaceNameStructureVersion == info.getInterfaceNameStructureVersion() ? controller.getRecipeMap()
+                : null;
+        if (recipeMap != null) return recipeMap;
+        Object hatch = this;
+        if (hatch instanceof MTEHatchInput inputHatch) return inputHatch.mRecipeMap;
+        if (hatch instanceof MTEHatchInputBus inputBus) return inputBus.mRecipeMap;
+        return null;
+    }
+
+    @Inject(
+        method = "updateCraftingIcon(Lnet/minecraft/item/ItemStack;Lgregtech/api/interfaces/tileentity/IGregTechTileEntity;)V",
+        at = @At("TAIL"))
+    private void gtnl$bindInterfaceNameController(ItemStack icon, IGregTechTileEntity owner,
+        CallbackInfo callbackInfo) {
+        if (icon == null) return;
+        if (owner != null && owner.getMetaTileEntity() instanceof MTEMultiBlockBase controller) {
+            setInterfaceNameController(controller);
+        } else gtnl$bindInterfaceNameController();
+    }
+
+    @Inject(method = "updateTexture", at = @At("HEAD"))
+    private void gtnl$bindInterfaceNameController(int id, CallbackInfo callbackInfo) {
+        gtnl$bindInterfaceNameController();
+    }
+
+    @Unique
+    private void gtnl$bindInterfaceNameController() {
+        MTEMultiBlockBase controller = InterfaceNameControllerContext.current();
+        if (controller != null) setInterfaceNameController(controller);
     }
 
     @Override
     public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x, int y,
         int z) {
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
-        if (!MainConfig.machine.enableHatchInterfaceTerminalEnhance) return;
-        var name = getCustomName();
-        if (name == null || name.isEmpty()) {
-            if (this instanceof IInterfaceViewable viewable) {
-                name = viewable.getName();
-                if (name == null || name.isEmpty()) return;
-            }
-        }
-        if (!Objects.equals(name, getLocalName())) {
-            tag.setString("name", name);
+        if (handlesOwnInterfaceName()) return;
+        if (hasCustomName()) {
+            InterfaceNameLocalization.writeName(tag, "gtnl$interface", gtnl$customName, null, null);
+        } else {
+            InterfaceNameLocalization.writeMachineName(tag, "gtnl$interface", (MTEHatch) (Object) this);
         }
     }
 
@@ -151,93 +161,9 @@ public abstract class MixinMTEHatch extends MTEBasicTank implements IMultiblockR
     public void getWailaBody(ItemStack itemStack, List<String> currenttip, IWailaDataAccessor accessor,
         IWailaConfigHandler config) {
         super.getWailaBody(itemStack, currenttip, accessor, config);
-        if (!MainConfig.machine.enableHatchInterfaceTerminalEnhance) return;
+        if (handlesOwnInterfaceName()) return;
         NBTTagCompound tag = accessor.getNBTData();
-        if (tag.hasKey("name")) {
-            currenttip.add(
-                EnumChatFormatting.AQUA
-                    + (MainConfig.machine.enableHatchInterfaceTerminalEnhance
-                        ? Utils.getExtraInterfaceName(tag.getString("name"))
-                        : tag.getString("name"))
-                    + EnumChatFormatting.RESET);
-        }
+        String name = InterfaceNameLocalization.localizeName(tag, "gtnl$interface");
+        if (!name.isEmpty()) currenttip.add(EnumChatFormatting.AQUA + name + EnumChatFormatting.RESET);
     }
-
-    @ModifyVariable(method = "updateCraftingIcon", at = @At("HEAD"), argsOnly = true, index = 1)
-    private ItemStack gtnl$modifyCraftingIcon(ItemStack value) {
-        if (!gtnl$customName.isEmpty()) {
-            var item = value.copy();
-            item.setStackDisplayName(gtnl$customName);
-            return item;
-        }
-        if (!MainConfig.machine.enableHatchInterfaceTerminalEnhance) return value;
-        if (value.hasDisplayName()) return value;
-        MTEHatch hatch = (MTEHatch) (Object) this;
-        StringBuilder sb = null;
-        if (hatch instanceof IConfigurationCircuitSupport circuitHatch) {
-            ItemStack circuit = getStackInSlot(circuitHatch.getCircuitSlot());
-            if (circuit != null) {
-                sb = new StringBuilder();
-                sb.append("gt_circuit_")
-                    .append(circuit.getItemDamage())
-                    .append("_");
-            }
-        }
-        if (hatch instanceof MTEHatchInput inputHatch
-            && (gtnl$multiBlockRecipeMapName != null || inputHatch.mRecipeMap != null)) {
-            if (sb == null) {
-                sb = new StringBuilder();
-            }
-            sb.append("extra_start_")
-                .append(
-                    gtnl$multiBlockRecipeMapName != null ? gtnl$multiBlockRecipeMapName
-                        : inputHatch.mRecipeMap.unlocalizedName)
-                .append("_extra_end_");
-        }
-        if (hatch instanceof MTEHatchInputBus inputBus
-            && (gtnl$multiBlockRecipeMapName != null || inputBus.mRecipeMap != null)) {
-            if (sb == null) {
-                sb = new StringBuilder();
-            }
-            sb.append("extra_start_")
-                .append(
-                    gtnl$multiBlockRecipeMapName != null ? gtnl$multiBlockRecipeMapName
-                        : inputBus.mRecipeMap.unlocalizedName)
-                .append("_extra_end_");
-        }
-
-        for (int i = 0; i < 10 && i < mInventory.length; i++) {
-            ItemStack stack = mInventory[i];
-            if (!ItemUtils.isExtraItem(stack)) continue;
-
-            if (sb == null) {
-                sb = new StringBuilder();
-            }
-
-            String registryName = GameRegistry.findUniqueIdentifierFor(stack.getItem())
-                .toString();
-
-            sb.append("extra_item_start_")
-                .append(registryName)
-                .append("@")
-                .append(stack.getItemDamage());
-
-            if (stack.hasDisplayName()) {
-                sb.append("{")
-                    .append(stack.getDisplayName())
-                    .append("}");
-            }
-
-            sb.append("extra_item_end_");
-            break;
-        }
-
-        if (sb != null && !sb.isEmpty()) {
-            ItemStack modified = value.copy();
-            modified.setStackDisplayName(sb.toString());
-            return modified;
-        }
-        return value;
-    }
-
 }

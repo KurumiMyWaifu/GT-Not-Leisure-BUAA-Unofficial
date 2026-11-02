@@ -3,7 +3,6 @@ package com.science.gtnl.common.machine.multiblock;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.CustomHatchElement.ParallelCon;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -11,7 +10,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChunkCoordinates;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -23,7 +21,9 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.ITierConverter;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.common.render.tile.AtomicEnergyExcitationPlantRenderer;
 import com.science.gtnl.utils.StructureUtils;
@@ -31,7 +31,6 @@ import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
 import com.science.gtnl.utils.recipes.metadata.FuelRefiningMetadata;
 
-import bartworks.system.material.WerkstoffLoader;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import goodgenerator.loader.Loaders;
@@ -56,6 +55,7 @@ import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import gregtech.common.render.IMTERenderer;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import kubatech.loaders.BlockLoader;
 
 @IMetaTileEntity.SkipGenerateDescription
@@ -223,14 +223,13 @@ public class AtomicEnergyExcitationPlant extends GTMMultiMachineBase<AtomicEnerg
     }
 
     public static List<Pair<Block, Integer>> getAllFieldCoilTiers() {
-        ArrayList<Pair<Block, Integer>> tiers = new ArrayList<>();
+        ObjectArrayList<Pair<Block, Integer>> tiers = new ObjectArrayList<>();
         for (Block coil : coils) {
             tiers.add(Pair.of(coil, 0));
         }
         return tiers;
     }
 
-    // TODO: Use GTNLMaterials
     @Override
     public IStructureDefinition<AtomicEnergyExcitationPlant> getStructureDefinition() {
         return StructureDefinition.<AtomicEnergyExcitationPlant>builder()
@@ -274,8 +273,8 @@ public class AtomicEnergyExcitationPlant extends GTMMultiMachineBase<AtomicEnerg
                             x -> ++x.mCountCasing,
                             Casings.HeatResistantTriniumPlatedCasing.asElement())))
             .addElement('G', GTStructureUtility.ofFrame(Materials.Neutronium))
-            .addElement('H', StructureUtility.ofBlock(WerkstoffLoader.BWBlockCasingsAdvanced, 31_766 + 129))
-            .addElement('I', StructureUtility.ofBlock(WerkstoffLoader.BWBlockCasings, 31_766 + 129))
+            .addElement('H', GTNLCasings.ReboltedNeutroniumCasing.asElement())
+            .addElement('I', GTNLCasings.BoltedNeutroniumCasing.asElement())
             .addElement('J', StructureUtility.ofBlock(GregTechAPI.sBlockMetal4, 13))
             .addElement('K', StructureUtility.ofBlock(GregTechAPI.sBlockMetal4, 14))
             .addElement('L', StructureUtility.isAir())
@@ -459,27 +458,8 @@ public class AtomicEnergyExcitationPlant extends GTMMultiMachineBase<AtomicEnerg
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.atomic_energy_excitation_plant.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.atomic_energy_excitation_plant.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.atomic_energy_excitation_plant.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.atomic_energy_excitation_plant.tooltip.2"))
-            .addPerfectOCInfo()
-            .addSupportAny()
-            .beginStructureBlock(17, 29, 23, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addOutputHatch("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addInputBus("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gt.blockcasings.9.11.name"))
-            .addSubChannelUsage(GTStructureChannels.HEATING_COIL)
-            .addSubChannelUsage(GTStructureChannels.TIER_MACHINE_CASING)
-            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

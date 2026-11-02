@@ -6,21 +6,40 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.StatCollector;
 
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchDataAccess;
 import gregtech.api.util.GTRecipe;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class DebugDataAccessHatch extends MTEHatchDataAccess {
 
     public DebugDataAccessHatch(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional, 14);
-        mDescriptionArray[0] = StatCollector.translateToLocal("gtnl.hatch.debug_data_access.tooltip.0");
-        mDescriptionArray[1] = StatCollector.translateToLocal("gtnl.hatch.debug_data_access.tooltip.1");
     }
 
     public DebugDataAccessHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.debug_data_access.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
+    }
+
+    @Override
+    public String[] getDescription() {
+        return new String[] { StatCollector.translateToLocal("gtnl.hatch.debug_data_access.tooltip.0"),
+            StatCollector.translateToLocal("gtnl.hatch.debug_data_access.tooltip.1") };
     }
 
     @Override

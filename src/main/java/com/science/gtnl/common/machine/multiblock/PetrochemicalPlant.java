@@ -2,11 +2,9 @@ package com.science.gtnl.common.machine.multiblock;
 
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -18,6 +16,7 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
 
@@ -37,6 +36,7 @@ import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import kekztech.common.Blocks;
 
 @IMetaTileEntity.SkipGenerateDescription
@@ -196,7 +196,7 @@ public class PetrochemicalPlant extends MultiMachineBase<PetrochemicalPlant> imp
 
         mOutputFluids = outputFluids;
         if (outputFluids != null) {
-            List<FluidStack> expandedFluids = new ArrayList<>();
+            List<FluidStack> expandedFluids = new ObjectArrayList<>();
             for (FluidStack fluidStack : outputFluids) {
                 if (fluidStack != null) {
                     long totalAmount = (long) fluidStack.amount * (getMCoilLevel().getTier() + 1)
@@ -256,27 +256,8 @@ public class PetrochemicalPlant extends MultiMachineBase<PetrochemicalPlant> imp
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.2"))
-            .addPerfectOCInfo()
-            .addSupportAny()
-            .beginStructureBlock(28, 60, 65, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addOutputHatch("0+", StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.casing"))
-            .addMufflerHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.petrochemical_plant.tooltip.muffler"),
-                8)
-            .addSubChannelUsage(GTStructureChannels.HEATING_COIL)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

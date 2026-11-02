@@ -5,7 +5,6 @@ import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.util.List;
 
-import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -17,7 +16,9 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.gtnllib.utils.GameUtils;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.enums.BlockIcons;
@@ -75,9 +76,9 @@ public class SteamInfernalCokeOven extends SteamMultiMachineBase<SteamInfernalCo
     @Override
     public boolean onRunningTick(ItemStack aStack) {
         runningTickCounter++;
-        if (runningTickCounter % 100 == 0 && speedup < 7) {
+        if (runningTickCounter % 100 == 0 && speedup < 10) {
             runningTickCounter = 0;
-            speedup += 0.1F;
+            speedup += 0.05;
         }
         return super.onRunningTick(aStack);
     }
@@ -106,9 +107,8 @@ public class SteamInfernalCokeOven extends SteamMultiMachineBase<SteamInfernalCo
                 'C',
                 StructureUtility.ofChain(
                     StructureUtility.ofBlockAnyMeta(Blocks.nether_brick),
-                    StructureUtility.ofBlockAnyMeta(
-                        Mods.Chisel.isModLoaded() ? Block.getBlockFromName("chisel:nether_brick")
-                            : Blocks.nether_brick)))
+                    StructureUtility
+                        .ofBlockAnyMeta(GameUtils.blockOr(Mods.Chisel.ID, "nether_brick", Blocks.nether_brick))))
             .build();
     }
 
@@ -200,12 +200,8 @@ public class SteamInfernalCokeOven extends SteamMultiMachineBase<SteamInfernalCo
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(getMachineType())
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_infernal_coke_oven.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_infernal_coke_oven.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_infernal_coke_oven.tooltip.2"))
-            .beginStructureBlock(5, 5, 5, true)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

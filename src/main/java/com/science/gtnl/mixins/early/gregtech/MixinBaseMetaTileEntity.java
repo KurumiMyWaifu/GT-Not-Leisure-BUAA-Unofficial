@@ -1,12 +1,14 @@
 package com.science.gtnl.mixins.early.gregtech;
 
 import net.minecraft.util.AxisAlignedBB;
+import net.minecraft.util.IChatComponent;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 import com.science.gtnl.api.ITileEntityTickAcceleration;
 import com.science.gtnl.asm.GTNLEarlyCoreMod;
+import com.science.gtnl.common.me.InterfaceNameLocalization;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -34,5 +36,10 @@ public abstract class MixinBaseMetaTileEntity extends CommonBaseMetaTileEntity i
                 this.zCoord + 1024);
         }
         return super.getRenderBoundingBox();
+    }
+
+    @Override
+    public IChatComponent getInterfaceNameSuffix() {
+        return InterfaceNameLocalization.machineSuffix(mMetaTileEntity, super.getInterfaceNameSuffix());
     }
 }

@@ -1,7 +1,7 @@
 package com.science.gtnl.common.machine.hatch;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -19,20 +19,22 @@ import com.science.gtnl.common.material.GTNLMaterials;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.modularui.IAddUIWidgets;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchDynamo;
 import gregtech.api.util.GTUtility;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 import vazkii.botania.api.subtile.ManaHelper;
-import vazkii.botania.api.subtile.SubTileEntity;
 import vazkii.botania.api.subtile.SubTileGenerating;
-import vazkii.botania.common.block.tile.TileSpecialFlower;
 import vazkii.botania.common.block.tile.mana.TilePool;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
 
     private static final int MANA_POOL_RADIUS = 2;
@@ -54,6 +56,18 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
     }
 
     @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.mana_dynamo." + GTValues.VN[mTier].toLowerCase(Locale.ROOT) + ".name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
+    }
+
+    @Override
     public MetaTileEntity newMetaEntity(IGregTechTileEntity aTileEntity) {
         return new ManaDynamoHatch(mName, mTier, mDescriptionArray, mTextures, mAmp);
     }
@@ -64,8 +78,8 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
         if (aBaseMetaTileEntity.isClientSide()) return;
 
         if (aBaseMetaTileEntity.isAllowedToWork() && aTick % 20 == 0) {
-            List<TilePool> pools = findManaPoolsInRange(aBaseMetaTileEntity);
-            List<SubTileGenerating> flowers = findGeneratingFlowersInRange(aBaseMetaTileEntity);
+            List<TilePool> pools = ManaScan.pools(aBaseMetaTileEntity, MANA_POOL_RADIUS);
+            List<SubTileGenerating> flowers = ManaScan.generatingFlowers(aBaseMetaTileEntity, MANA_FLOWER_RADIUS);
             if (!flowers.isEmpty()) {
                 processFlowerManaTransfer(flowers);
             }
@@ -73,7 +87,7 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
             if (!pools.isEmpty()) {
                 if (isLiquidizerMode) {
                     for (TilePool pool : pools) {
-                        if (isDropMetaValid(pool)) {
+                        if (ManaScan.isDropMetaValid(pool)) {
                             fillChamberToMax();
                         }
                     }
@@ -135,7 +149,7 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
 
     @Override
     public String[] getDescription() {
-        ArrayList<String> desc = new ArrayList<>();
+        ObjectArrayList<String> desc = new ObjectArrayList<>();
         desc.add(StatCollector.translateToLocal("gtnl.hatch.mana_dynamo.tooltip.0"));
         desc.add(StatCollector.translateToLocal("gtnl.hatch.mana_dynamo.tooltip.1"));
         desc.add(StatCollector.translateToLocalFormatted("gtnl.hatch.mana_dynamo.tooltip.2", MANA_TO_EU_RATE));
@@ -194,14 +208,13 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
             int currentMana = tag.getInteger("currentMana");
             int capacity = tag.getInteger("capacity");
             currentTip.add(
-                EnumChatFormatting.BLUE + StatCollector.translateToLocal("gtnl.hatch.mana_dynamo.info.stored_mana")
-                    + EnumChatFormatting.RESET
-                    + EnumChatFormatting.GREEN
-                    + NumberFormatUtil.formatNumber(currentMana)
-                    + EnumChatFormatting.RESET
-                    + " / "
-                    + EnumChatFormatting.YELLOW
-                    + NumberFormatUtil.formatNumber(capacity));
+                EnumChatFormatting.BLUE + StatCollector.translateToLocalFormatted(
+                    "gtnl.hatch.mana_dynamo.info.stored_mana",
+                    EnumChatFormatting.GREEN + NumberFormatUtil.formatNumber(currentMana)
+                        + EnumChatFormatting.RESET
+                        + " / "
+                        + EnumChatFormatting.YELLOW
+                        + NumberFormatUtil.formatNumber(capacity)));
         }
     }
 
@@ -223,7 +236,7 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
         int capacity = getCapacity();
 
         for (TilePool pool : pools) {
-            if (isDropMetaValid(pool)) continue;
+            if (ManaScan.isDropMetaValid(pool)) continue;
 
             int poolMana = pool.getCurrentMana();
             if (poolMana <= 0) continue;
@@ -242,7 +255,7 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
         int currentAmount = currentMana != null ? currentMana.amount : 0;
 
         for (TilePool pool : pools) {
-            if (isDropMetaValid(pool)) continue;
+            if (ManaScan.isDropMetaValid(pool)) continue;
 
             int availableSpace = pool.getAvailableSpaceForMana();
             if (availableSpace <= 0) continue;
@@ -280,55 +293,5 @@ public class ManaDynamoHatch extends MTEHatchDynamo implements IAddUIWidgets {
 
             if (currentAmount >= capacity) break;
         }
-    }
-
-    private List<TilePool> findManaPoolsInRange(IGregTechTileEntity aBaseMetaTileEntity) {
-        World world = aBaseMetaTileEntity.getWorld();
-        int x = aBaseMetaTileEntity.getXCoord();
-        int y = aBaseMetaTileEntity.getYCoord();
-        int z = aBaseMetaTileEntity.getZCoord();
-
-        List<TilePool> pools = new ArrayList<>();
-
-        for (int dx = -MANA_POOL_RADIUS; dx <= MANA_POOL_RADIUS; dx++) {
-            for (int dy = -MANA_POOL_RADIUS; dy <= MANA_POOL_RADIUS; dy++) {
-                for (int dz = -MANA_POOL_RADIUS; dz <= MANA_POOL_RADIUS; dz++) {
-                    TileEntity te = world.getTileEntity(x + dx, y + dy, z + dz);
-                    if (te instanceof TilePool pool) {
-                        pools.add(pool);
-                    }
-                }
-            }
-        }
-        return pools;
-    }
-
-    private List<SubTileGenerating> findGeneratingFlowersInRange(IGregTechTileEntity aBaseMetaTileEntity) {
-        World world = aBaseMetaTileEntity.getWorld();
-        int x = aBaseMetaTileEntity.getXCoord();
-        int y = aBaseMetaTileEntity.getYCoord();
-        int z = aBaseMetaTileEntity.getZCoord();
-
-        List<SubTileGenerating> flowers = new ArrayList<>();
-
-        for (int dx = -MANA_FLOWER_RADIUS; dx <= MANA_FLOWER_RADIUS; dx++) {
-            for (int dy = -MANA_FLOWER_RADIUS; dy <= MANA_FLOWER_RADIUS; dy++) {
-                for (int dz = -MANA_FLOWER_RADIUS; dz <= MANA_FLOWER_RADIUS; dz++) {
-                    TileEntity te = world.getTileEntity(x + dx, y + dy, z + dz);
-                    if (te instanceof TileSpecialFlower flowerTile) {
-                        SubTileEntity subTile = flowerTile.getSubTile();
-                        if (subTile instanceof SubTileGenerating) {
-                            flowers.add((SubTileGenerating) subTile);
-                        }
-                    }
-                }
-            }
-        }
-        return flowers;
-    }
-
-    private boolean isDropMetaValid(TilePool pool) {
-        int meta = pool.getBlockMetadata();
-        return meta == 1;
     }
 }

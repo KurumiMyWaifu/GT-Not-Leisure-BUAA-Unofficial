@@ -15,30 +15,37 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.science.gtnl.ClientProxy;
-import com.science.gtnl.client.GTNLCreativeTabs;
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.science.gtnl.common.block.blocks.item.ItemBlockEnderElevator;
 import com.science.gtnl.common.block.blocks.tile.TileEntityEnderElevator;
-import com.science.gtnl.utils.event.LivingSneakEvent;
+import com.science.gtnl.common.entity.LivingSneakEvent;
+import com.science.gtnl.common.item.GTNLCreativeTabs;
+import com.science.gtnl.loader.RenderLoader;
+import com.science.gtnl.utils.ColorUtils;
 
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
+@EventBusSubscriber(phase = Phase.PRE)
 public class BlockEnderElevator extends BlockContainer {
 
     public IIcon overlayIcon;
 
     public int type;
 
-    public static final int[] COLOR_TABLE = new int[] { 0xFFFFFF, 0xD87F33, 0xB24CA5, 0x6699D8, 0xE5E533, 0x7FCC19,
-        0xF27FA5, 0x4C4C4C, 0x999999, 0x4C7F99, 0x7F3FB2, 0x334CB2, 0x664C33, 0x667F33, 0x993333, 0x191919 };
+    public static final int[] COLOR_TABLE = new int[ColorUtils.enderElevatorColorCount()];
+
+    static {
+        for (int index = 0; index < COLOR_TABLE.length; index++) {
+            COLOR_TABLE[index] = ColorUtils.enderElevatorColor(index);
+        }
+    }
 
     public BlockEnderElevator(int type) {
         super(Material.iron);
@@ -51,12 +58,9 @@ public class BlockEnderElevator extends BlockContainer {
         };
         this.setBlockName("gtnl.ender_elevator." + suffix.toLowerCase());
         this.setBlockTextureName(RESOURCE_ROOT_ID + ":ender_elevator");
+        this.setLightLevel(1.0f);
         this.setCreativeTab(GTNLCreativeTabs.GTNotLeisureBlock);
         GameRegistry.registerBlock(this, ItemBlockEnderElevator.class, "ender_elevator_" + suffix.toLowerCase());
-        MinecraftForge.EVENT_BUS.register(this);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(this);
         if (type == 1) setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 0.5F, 1.0F);
         else if (type == 2) setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 0.0625F, 1.0F);
         else setBlockBounds(0.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F);
@@ -102,7 +106,7 @@ public class BlockEnderElevator extends BlockContainer {
     @SideOnly(Side.CLIENT)
     @Override
     public int getRenderType() {
-        return ClientProxy.ENDER_ELEVATOR_RENDER_ID;
+        return RenderLoader.ENDER_ELEVATOR_RENDER_ID;
     }
 
     @Override
@@ -153,7 +157,7 @@ public class BlockEnderElevator extends BlockContainer {
         if (meta >= 0 && meta < COLOR_TABLE.length) {
             return COLOR_TABLE[meta];
         }
-        return 0xFFFFFF;
+        return ColorUtils.rgb(ColorUtils.guiTextColorWhite);
     }
 
     @SideOnly(Side.CLIENT)
@@ -162,17 +166,17 @@ public class BlockEnderElevator extends BlockContainer {
         if (meta >= 0 && meta < COLOR_TABLE.length) {
             return COLOR_TABLE[meta];
         }
-        return 0xFFFFFF;
+        return ColorUtils.rgb(ColorUtils.guiTextColorWhite);
     }
 
     @SubscribeEvent
-    public void onLivingUpdate(LivingEvent.LivingJumpEvent event) {
+    public static void onLivingUpdate(LivingEvent.LivingJumpEvent event) {
         EntityLivingBase entity = event.entityLiving;
         handleElevatorDetection(entity, true);
     }
 
     @SubscribeEvent
-    public void onLivingUpdate(LivingSneakEvent event) {
+    public static void onLivingUpdate(LivingSneakEvent event) {
         if (!event.isSneaking()) return;
         EntityLivingBase entity = event.entityLiving;
         handleElevatorDetection(entity, false);

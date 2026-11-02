@@ -3,9 +3,10 @@ package com.science.gtnl.common.machine.multiMachineBase;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -19,20 +20,28 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.NotNull;
 
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
+import com.gtnllib.utils.MathUtils;
+import com.science.gtnl.api.IMultiblockTooltipRules.TieredPart;
 import com.science.gtnl.api.IWirelessEnergy;
 import com.science.gtnl.common.machine.hatch.ParallelControllerHatch;
-import com.science.gtnl.utils.Utils;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
+import com.science.gtnl.common.machine.tooltip.MultiblockTooltipReader;
+import com.science.gtnl.mixins.early.gregtech.AccessorProcessingLogic;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
 
 import gregtech.api.enums.GTValues;
+import gregtech.api.enums.VoltageIndex;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
+import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTUtility;
+import gregtech.api.util.tooltip.TooltipHelper;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import lombok.Setter;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -41,9 +50,18 @@ import mcp.mobius.waila.api.IWailaDataAccessor;
 public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMultiMachineBase<T>>
     extends MultiMachineBase<T> implements IWirelessEnergy {
 
+    private static final double NORMAL_DURATION_DECREASE = 2.0, NORMAL_POWER_INCREASE = 4.0;
+    private static final String WIRELESS_MODE_LINE_KEY = "gtnl.machine.common.wireless.mode";
+    protected static final String WIRELESS_MODE_NAME_KEY = "gtnl.structure.tooltip.wireless_mode";
+    private static final int WIRELESS_VOLTAGE_TIER_OFFSET = 1;
+    protected static final int WIRELESS_RECIPE_AMPERAGE = 4;
+    private static final long WIRELESS_BASE_AMPERAGE = 8;
+    private static final long WIRELESS_AMPERAGE_RESERVE = 2;
+    private static final int WIRELESS_POWER_PROBES = 4;
+
     public UUID ownerUUID;
     @Getter
-    public boolean wirelessMode = getDefaultWirelessMode();
+    public boolean wirelessMode;
     @Getter
     @Setter
     public boolean wirelessUpgrade = false;
@@ -51,7 +69,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     public int maxParallelStored = -1;
     public boolean isRecipeProcessing = false;
     public BigInteger costingEU = BigInteger.ZERO;
-    public String costingEUText = Utils.ZERO_STRING;
+    public String costingEUText = MathUtils.ZERO_STRING;
     public int cycleNum = 100_000;
     public int cycleNow = 0;
 
@@ -110,7 +128,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
             @NotNull
             @Override
             public CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                if (wirelessMode && recipe.mEUt > GTValues.V[Math.min(mParallelTier + 1, 14)] * 4) {
+                if (wirelessMode && recipe.mEUt > wirelessModeVoltage() * WIRELESS_RECIPE_AMPERAGE) {
                     return CheckRecipeResultRegistry.insufficientPower(recipe.mEUt);
                 }
                 return super.validateRecipe(recipe);
@@ -132,7 +150,7 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
         maxParallelStored = -1;
         resetParallelTier();
         costingEU = BigInteger.ZERO;
-        costingEUText = Utils.ZERO_STRING;
+        costingEUText = MathUtils.ZERO_STRING;
         totalOverclockedDuration = 0;
         cycleNow = 0;
         if (!wirelessMode) return super.checkProcessing();
@@ -178,13 +196,13 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
         BigInteger costEU = BigInteger.valueOf(processingLogic.getCalculatedEut())
             .multiply(BigInteger.valueOf(processingLogic.getDuration()));
-        if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(Utils.NEGATIVE_ONE))) {
+        if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(MathUtils.NEGATIVE_ONE))) {
             return CheckRecipeResultRegistry.insufficientPower(costEU.longValue());
         }
 
         costingEU = costingEU.add(costEU);
-        mOutputItems = Utils.mergeArray(mOutputItems, processingLogic.getOutputItems());
-        mOutputFluids = Utils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+        mOutputItems = MathUtils.mergeArray(mOutputItems, processingLogic.getOutputItems());
+        mOutputFluids = MathUtils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
         totalOverclockedDuration += processingLogic.getDuration();
         maxParallelStored = maxParallelStored - processingLogic.getCurrentParallels();
 
@@ -193,28 +211,54 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     }
 
     @Override
-    public void setupProcessingLogic(ProcessingLogic logic) {
-        super.setupProcessingLogic(logic);
-        logic.setUnlimitedTierSkips();
-    }
-
-    @Override
     public void setProcessingLogicPower(ProcessingLogic logic) {
+        setOverclockRatio(logic);
         if (wirelessMode) {
-            logic.setAvailableVoltage(GTValues.V[Math.min(mParallelTier + 1, 14)]);
-            logic.setAvailableAmperage((8L << (2 * mParallelTier)) - 2L);
+            logic.setAvailableVoltage(appliesMachineVoltageLimit() ? getMachineVoltageLimit() : wirelessModeVoltage());
+            logic.setAvailableAmperage((WIRELESS_BASE_AMPERAGE << (2 * mParallelTier)) - WIRELESS_AMPERAGE_RESERVE);
             logic.setAmperageOC(true);
-            logic.enablePerfectOverclock();
             return;
         }
-        logic.setAvailableVoltage(getMaxInputEu());
+        logic.setAvailableVoltage(appliesMachineVoltageLimit() ? getLimitedInputEu() : getMaxInputEu());
         logic.setAvailableAmperage(1);
         logic.setAmperageOC(true);
     }
 
+    // The logic keeps perfect overclocking once enabled, so leaving wireless mode sets the normal ratio back.
+    protected void setOverclockRatio(ProcessingLogic logic) {
+        if (wirelessMode || getPerfectOC()) logic.enablePerfectOverclock();
+        else logic.setOverclock(NORMAL_DURATION_DECREASE, NORMAL_POWER_INCREASE);
+    }
+
+    @Override
+    public int getMaxTierSkip() {
+        return UNLIMITED_TIER_SKIPS;
+    }
+
+    protected boolean appliesMachineVoltageLimit() {
+        return false;
+    }
+
+    private long getLimitedInputEu() {
+        long limit = getMachineVoltageLimit();
+        return Math.max(limitedEu(mEnergyHatches, limit), limitedEu(mExoticEnergyHatches, limit));
+    }
+
+    private static long limitedEu(Collection<? extends MTEHatch> hatches, long voltageLimit) {
+        long eu = 0;
+        for (MTEHatch hatch : GTUtility.validMTEList(hatches)) {
+            long voltage = Math.min(
+                hatch.getBaseMetaTileEntity()
+                    .getInputVoltage(),
+                voltageLimit);
+            eu = GTUtility.addSafe(eu, GTUtility.mulSafe(voltage, hatch.maxWorkingAmperesIn()));
+        }
+        return eu;
+    }
+
     @Override
     public String[] getInfoData() {
-        List<String> infoData = new ArrayList<>(Arrays.asList(super.getInfoData()));
+        List<String> infoData = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
         if (wirelessMode) {
             infoData.add(
                 IGregTechDeviceInformation.encode("gtnl.waila.wireless.mode.format", EnumChatFormatting.LIGHT_PURPLE));
@@ -291,7 +335,114 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
     }
 
     @Override
-    public boolean getPerfectOC() {
+    public List<String> getTooltipWirelessModeLines() {
+        String mode = GTNLMultiblockTooltipBuilder.mechanicName(WIRELESS_MODE_NAME_KEY);
+        String hatch = GTNLMultiblockTooltipBuilder.hatchName(CustomHatchElement.ParallelCon.getDescriptionLangKey());
+        String recipes = !getPerfectOC() && overclocksPerfectlyInWirelessMode() ? ".recipes.perfect_oc" : ".recipes";
+        List<String> lines = new ObjectArrayList<>(
+            Arrays.asList(
+                StatCollector.translateToLocalFormatted(
+                    WIRELESS_MODE_LINE_KEY + ".auto",
+                    GTNLMultiblockTooltipBuilder.mechanicName(WIRELESS_UPGRADE_TOOLTIP_KEY),
+                    mode),
+                wirelessPowerLine(mode, hatch),
+                StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + recipes, mode)));
+        lines.removeIf(Objects::isNull);
+        return lines;
+    }
+
+    private String wirelessPowerLine(String mode, String hatch) {
+        int[] tiers = new int[WIRELESS_POWER_PROBES];
+        long[] amperages = new long[WIRELESS_POWER_PROBES];
+        boolean wireless = wirelessMode;
+        int parallelTier = mParallelTier;
+        int casingTier = mCasingTier;
+        try {
+            wirelessMode = true;
+            if (appliesMachineVoltageLimit()) mCasingTier = TieredPart.CASING.maxTier;
+            for (int index = 0; index < tiers.length; index++) {
+                mParallelTier = MultiblockTooltipReader.FIRST_PARALLEL_CONTROLLER_PROBE_TIER + index;
+                ProcessingLogic logic = new GTNLProcessingLogic();
+                setProcessingLogicPower(logic);
+                AccessorProcessingLogic power = (AccessorProcessingLogic) logic;
+                tiers[index] = GTUtility.getTier(power.getAvailableVoltage());
+                amperages[index] = power.getAvailableAmperage();
+            }
+        } finally {
+            wirelessMode = wireless;
+            mParallelTier = parallelTier;
+            mCasingTier = casingTier;
+        }
+        String voltage = voltagePhrase(hatch, tiers);
+        String current = currentPhrase(amperages);
+        if (voltage == null || current == null) return null;
+        if (appliesMachineVoltageLimit()) {
+            String limit = wirelessCasingLimitPhrase(voltage);
+            if (limit == null) return null;
+            voltage = limit;
+        }
+        return powerLine(mode, voltage, current);
+    }
+
+    private String wirelessCasingLimitPhrase(String voltage) {
+        WirelessEnergyMultiMachineBase<?> probe = (WirelessEnergyMultiMachineBase<?>) tooltipProbe();
+        probe.wirelessMode = true;
+        probe.mParallelTier = VoltageIndex.MAX;
+        CasingVoltageLimit limit = probe.casingVoltageLimit();
+        if (limit == null) return null;
+        if (limit.unlockVoltageTier() != CASING_LIMIT_NEVER_UNLOCKS
+            && limit.unlockVoltageTier() + limit.tiersAbove() < VoltageIndex.MAX) return null;
+        return StatCollector.translateToLocalFormatted(
+            WIRELESS_MODE_LINE_KEY + ".voltage.casing_limit",
+            voltage,
+            casingTierText(),
+            limit.tiersAbove());
+    }
+
+    private static String powerLine(String mode, String voltage, String current) {
+        return StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + ".power", mode, voltage, current);
+    }
+
+    private static String voltagePhrase(String hatch, int[] tiers) {
+        int firstTier = MultiblockTooltipReader.FIRST_PARALLEL_CONTROLLER_PROBE_TIER;
+        boolean fixed = true, perTier = true;
+        for (int index = 1; index < tiers.length; index++) {
+            fixed &= tiers[index] == tiers[0];
+            perTier &= tiers[index] - (firstTier + index) == tiers[0] - firstTier;
+        }
+        if (perTier) return perTierVoltage(hatch, tiers[0] - firstTier);
+        if (!fixed) return null;
+        String tier = tiers[0] <= VoltageIndex.MAX ? TooltipHelper.voltageTierText(tiers[0], false)
+            : EnumChatFormatting.WHITE + GTValues.VN[tiers[0]] + EnumChatFormatting.GRAY;
+        return StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + ".voltage.fixed", tier);
+    }
+
+    private static String perTierVoltage(String hatch, int offset) {
+        return StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + ".voltage.per_tier", hatch, offset);
+    }
+
+    private static String currentPhrase(long[] amperages) {
+        int firstTier = MultiblockTooltipReader.FIRST_PARALLEL_CONTROLLER_PROBE_TIER;
+        long step = (1L << (2 * (firstTier + 1))) - (1L << (2 * firstTier));
+        long difference = amperages[1] - amperages[0];
+        if (difference % step != 0) return null;
+        long scale = difference / step;
+        long offset = amperages[0] - (scale << (2 * firstTier));
+        for (int index = 0; index < amperages.length; index++) {
+            if (amperages[index] != (scale << (2 * (firstTier + index))) + offset) return null;
+        }
+        if (scale == 0) {
+            return StatCollector.translateToLocalFormatted(
+                WIRELESS_MODE_LINE_KEY + ".current.fixed",
+                NumberFormatUtil.formatNumber(offset));
+        }
+        if (scale < 0 || offset > 0) return null;
+        if (offset == 0)
+            return StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + ".current.scaled", scale);
+        return StatCollector.translateToLocalFormatted(WIRELESS_MODE_LINE_KEY + ".current.per_tier", scale, -offset);
+    }
+
+    protected boolean overclocksPerfectlyInWirelessMode() {
         return true;
     }
 
@@ -307,10 +458,26 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
     @Override
     public long getMaxInputVoltage() {
+        if (tooltipVoltageTier >= 0) return super.getMaxInputVoltage();
         if (wirelessMode) {
-            return GTValues.V[Math.min(mParallelTier + 1, 14)];
+            return wirelessModeVoltage();
         }
         return super.getMaxInputVoltage();
+    }
+
+    @Override
+    protected TooltipStats readTooltipStats() {
+        boolean wireless = wirelessMode;
+        try {
+            wirelessMode = false;
+            return super.readTooltipStats();
+        } finally {
+            wirelessMode = wireless;
+        }
+    }
+
+    private long wirelessModeVoltage() {
+        return GTValues.V[Math.min(mParallelTier + WIRELESS_VOLTAGE_TIER_OFFSET, VoltageIndex.MAX)];
     }
 
     @Override
@@ -333,10 +500,6 @@ public abstract class WirelessEnergyMultiMachineBase<T extends WirelessEnergyMul
 
     @Override
     public boolean getDefaultHasMaintenanceChecks() {
-        return false;
-    }
-
-    public boolean getDefaultWirelessMode() {
         return false;
     }
 

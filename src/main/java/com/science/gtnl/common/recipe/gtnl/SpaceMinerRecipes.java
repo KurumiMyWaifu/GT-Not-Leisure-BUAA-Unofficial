@@ -10,6 +10,7 @@ import net.minecraftforge.fluids.FluidStack;
 import com.github.bsideup.jabel.Desugar;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.item.ItemUtils;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 import com.science.gtnl.utils.recipes.metadata.ResourceCollectionModuleMetadata;
@@ -19,11 +20,9 @@ import bartworks.system.material.WerkstoffLoader;
 import goodgenerator.items.GGMaterial;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.fluids.GTPPFluids;
@@ -43,16 +42,30 @@ public class SpaceMinerRecipes implements IRecipePool {
     private record MinerTier(int tier, int specialValue, ItemStack drone, long eut) {}
 
     @Desugar
-    private record OreGroup(int tier, ItemStack circuit, ItemStack[] outputs) {}
+    private record OreGroup(int tier, int circuitNumber, ItemStack circuitStack, ItemStack[] outputs) {
+
+        private OreGroup(int tier, int circuitNumber, ItemStack[] outputs) {
+            this(tier, circuitNumber, null, outputs);
+        }
+
+        private OreGroup(int tier, ItemStack circuitStack, ItemStack[] outputs) {
+            this(tier, -1, circuitStack, outputs);
+        }
+    }
 
     private static ItemStack[] outputs(ItemStack... stacks) {
         return stacks;
     }
 
     private void addSpaceMinerRecipe(OreGroup group, MinerTier tier, FuelVariant fuel) {
-        RecipeBuilder.builder()
-            .itemInputs(group.circuit(), tier.drone())
-            .itemOutputs(group.outputs())
+        RecipeBuilder builder = RecipeBuilder.builder();
+        if (group.circuitNumber() >= 0) {
+            builder.itemInputs(tier.drone())
+                .circuit(group.circuitNumber());
+        } else {
+            builder.itemInputs(group.circuitStack(), tier.drone());
+        }
+        builder.itemOutputs(group.outputs())
             .fluidInputs(fuel.fuel())
             .specialValue(tier.specialValue())
             .metadata(MINER_TIER, tier.tier())
@@ -81,7 +94,7 @@ public class SpaceMinerRecipes implements IRecipePool {
         List<OreGroup> oreGroups = Arrays.asList(
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(24),
+                24,
                 outputs(
                     GTUtility.copyAmountUnsafe(180, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Naquadah, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Chromite, 1)),
@@ -95,7 +108,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTOreDictUnificator.get(OrePrefixes.ore, Materials.ElectrumFlux, 50))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(23),
+                23,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Scheelite, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Tungstate, 1)),
@@ -108,7 +121,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(70, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Gallium, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(22),
+                22,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Garnierite, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Nickel, 1)),
@@ -121,7 +134,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(60, MaterialsOres.CROCROITE.getOre(1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(21),
+                21,
                 outputs(
                     GTUtility.copyAmountUnsafe(60, WerkstoffLoader.Bornite.get(OrePrefixes.ore, 1)),
                     GTUtility.copyAmountUnsafe(40, WerkstoffLoader.PTMetallicPowder.get(OrePrefixes.ore, 1)),
@@ -134,7 +147,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Opal, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(20),
+                20,
                 outputs(
                     GTUtility.copyAmountUnsafe(240, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Oilsands, 1)),
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Gold, 1)),
@@ -147,7 +160,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(20, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Iridium, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(19),
+                19,
                 outputs(
                     GTUtility.copyAmountUnsafe(180, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Magnetite, 1)),
                     GTUtility.copyAmountUnsafe(
@@ -163,7 +176,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Quantium, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(18),
+                18,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Apatite, 1)),
                     GTUtility.copyAmountUnsafe(
@@ -178,7 +191,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Zinc, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(17),
+                17,
                 outputs(
                     GTUtility.copyAmountUnsafe(180, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Redstone, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Ruby, 1)),
@@ -192,7 +205,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(50, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Yttrium, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(16),
+                16,
                 outputs(
                     GTUtility.copyAmountUnsafe(150, GTOreDictUnificator.get(OrePrefixes.ore, Materials.RockSalt, 1)),
                     GTUtility.copyAmountUnsafe(10, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Salt, 1)),
@@ -205,7 +218,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Saltpeter, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(15),
+                15,
                 outputs(
                     GTUtility.copyAmountUnsafe(210, GTOreDictUnificator.get(OrePrefixes.ore, Materials.BlueTopaz, 1)),
                     GTUtility.copyAmountUnsafe(140, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Topaz, 1)),
@@ -223,7 +236,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.dust, Materials.Thaumium, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(14),
+                14,
                 outputs(
                     GTUtility.copyAmountUnsafe(40, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Barite, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.GarnetRed, 1)),
@@ -238,7 +251,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(40, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Oriharukon, 1)))),
             new OreGroup(
                 4,
-                GTUtility.getIntegratedCircuit(13),
+                13,
                 outputs(
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Desh, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.CertusQuartz, 1)),
@@ -252,7 +265,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Uranium235, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(12),
+                12,
                 outputs(
                     GTUtility.copyAmountUnsafe(140, MaterialsOres.ZIRCON.getOre(1)),
                     GTUtility
@@ -266,7 +279,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(40, WerkstoffLoader.Thorianit.get(OrePrefixes.ore, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(11),
+                11,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Galena, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Silver, 1)),
@@ -279,7 +292,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Vanadium, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(10),
+                10,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Lazurite, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Sodalite, 1)),
@@ -292,7 +305,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(40, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Strontium, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(9),
+                9,
                 outputs(
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Grossular, 1)),
                     GTUtility.copyAmountUnsafe(40, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Pyrolusite, 1)),
@@ -303,13 +316,11 @@ public class SpaceMinerRecipes implements IRecipePool {
                         GTOreDictUnificator.get(OrePrefixes.ore, Materials.VanadiumMagnetite, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Gold, 1)),
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Endium, 1)),
-                    GTUtility.copyAmountUnsafe(
-                        60,
-                        GTModHandler.getModItem(Mods.HardcoreEnderExpansion.ID, "end_powder_ore", 1)),
+                    GTUtility.copyAmountUnsafe(60, ModsItemlist.HardcoreEnderExpansionEndPowderOre.get(1)),
                     GTUtility.copyAmountUnsafe(240, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Cheese, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(8),
+                8,
                 outputs(
                     GTUtility.copyAmountUnsafe(90, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Beryllium, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Emerald, 1)),
@@ -322,7 +333,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(50, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Lepidolite, 1)))),
             new OreGroup(
                 3,
-                GTUtility.getIntegratedCircuit(7),
+                7,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Saltpeter, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Diatomite, 1)),
@@ -335,7 +346,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Borax, 1)))),
             new OreGroup(
                 4,
-                GTUtility.getIntegratedCircuit(6),
+                6,
                 outputs(
                     GTUtility
                         .copyAmountUnsafe(250, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Chalcopyrite, 1)),
@@ -354,7 +365,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                         .copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.MeteoricIron, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(5),
+                5,
                 outputs(
                     GTUtility.copyAmountUnsafe(180, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Redstone, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Ruby, 1)),
@@ -367,7 +378,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(40, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Lutetium, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(4),
+                4,
                 outputs(
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Soapstone, 1)),
                     GTUtility.copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Talc, 1)),
@@ -380,7 +391,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(60, MaterialsAlloy.KOBOLDITE.getOre(1)))),
             new OreGroup(
                 4,
-                GTUtility.getIntegratedCircuit(3),
+                3,
                 outputs(
                     GTUtility.copyAmountUnsafe(90, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Bastnasite, 1)),
                     GTUtility.copyAmountUnsafe(30, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Molybdenum, 1)),
@@ -395,7 +406,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                     GTUtility.copyAmountUnsafe(60, GTOreDictUnificator.get(OrePrefixes.ore, Materials.ShadowIron, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(2),
+                2,
                 outputs(
                     GTUtility.copyAmountUnsafe(180, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Almandine, 1)),
                     GTUtility.copyAmountUnsafe(120, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Pyrope, 1)),
@@ -410,7 +421,7 @@ public class SpaceMinerRecipes implements IRecipePool {
                         .copyAmountUnsafe(80, GTOreDictUnificator.get(OrePrefixes.ore, Materials.InfusedFire, 1)))),
             new OreGroup(
                 1,
-                GTUtility.getIntegratedCircuit(1),
+                1,
                 outputs(
                     GTUtility
                         .copyAmountUnsafe(280, GTOreDictUnificator.get(OrePrefixes.ore, Materials.Tetrahedrite, 1)),

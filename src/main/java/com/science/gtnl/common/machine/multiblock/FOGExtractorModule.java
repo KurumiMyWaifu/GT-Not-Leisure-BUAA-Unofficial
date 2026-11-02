@@ -1,31 +1,17 @@
 package com.science.gtnl.common.machine.multiblock;
 
-import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
-
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
 
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.gtnewhorizons.modularui.api.drawable.IDrawable;
-import com.gtnewhorizons.modularui.api.drawable.UITexture;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.api.widget.IWidgetBuilder;
-import com.gtnewhorizons.modularui.api.widget.Widget;
-import com.gtnewhorizons.modularui.common.widget.ButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.science.gtnl.common.gui.modularui.FOGExtractorModuleGui;
-import com.science.gtnl.common.machine.multiblock.module.eternalGregTechWorkshop.util.EternalGregTechWorkshopTextures;
+import com.science.gtnl.common.gui.modularui.multiblock.FOGExtractorModuleGui;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
@@ -40,8 +26,8 @@ import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Setter;
-import tectech.TecTech;
 import tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule;
 
 @IMetaTileEntity.SkipGenerateDescription
@@ -147,7 +133,7 @@ public class FOGExtractorModule extends MTEBaseModule {
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> str = new ArrayList<>();
+        ObjectArrayList<String> str = new ObjectArrayList<>();
         str.add(
             IGregTechDeviceInformation.encode(
                 "GT5U.infodata.progress",
@@ -185,78 +171,10 @@ public class FOGExtractorModule extends MTEBaseModule {
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.fog_extractor_module.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.2"))
-            .addSeparator(EnumChatFormatting.AQUA, 74)
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.extractor_module.tooltip.6"))
-            .beginStructureBlock(7, 7, 13, false)
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "20"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.0"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "20"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.1"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "5"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.2"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "5"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.3"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "1"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.4"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher(EnumChatFormatting.AQUA, 74);
         return tt;
-    }
-
-    @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after every FOG module GUI action is covered by mui2.
-        super.addUIWidgets(builder, buildContext);
-        builder.widget(createFluidModeButton(builder));
-    }
-
-    @Deprecated
-    public ButtonWidget createFluidModeButton(IWidgetBuilder<?> builder) {
-        // TODO: Remove this mui1 fallback after every FOG module GUI action is covered by mui2.
-        Widget button = new ButtonWidget().setOnClick((clickData, widget) -> {
-            TecTech.proxy.playSound(getBaseMetaTileEntity(), "fx_click");
-            fluidMode = !fluidMode;
-            widget.notifyTooltipChange();
-        })
-            .setPlayClickSound(false)
-            .setBackground(() -> {
-                List<UITexture> ret = new ArrayList<>();
-                ret.add(EternalGregTechWorkshopTextures.BUTTON_CELESTIAL_32x32);
-                if (fluidMode) {
-                    ret.add(EternalGregTechWorkshopTextures.OVERLAY_BUTTON_FURNACE_MODE);
-                } else {
-                    ret.add(EternalGregTechWorkshopTextures.OVERLAY_BUTTON_FURNACE_MODE_OFF);
-                }
-                return ret.toArray(new IDrawable[0]);
-            })
-            .attachSyncer(new FakeSyncWidget.BooleanSyncer(this::isFluidModeOn, this::setFluidMode), builder)
-            .dynamicTooltip(
-                () -> Collections.singletonList(
-                    StatCollector.translateToLocal(
-                        fluidMode ? "gtnl.machine.fog_extractor.fluid_mode.enabled"
-                            : "gtnl.machine.fog_extractor.fluid_mode.disabled")))
-            .setTooltipShowUpDelay(TOOLTIP_DELAY)
-            .setPos(174, 91)
-            .setSize(16, 16);
-        return (ButtonWidget) button;
     }
 
     public boolean isFluidModeOn() {

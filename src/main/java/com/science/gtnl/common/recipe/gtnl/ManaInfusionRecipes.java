@@ -1,6 +1,5 @@
 package com.science.gtnl.common.recipe.gtnl;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
@@ -9,13 +8,13 @@ import net.minecraftforge.fluids.FluidStack;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLMaterials;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
-import gregtech.api.enums.Mods;
+import gregtech.api.enums.TierEU;
 import gregtech.api.objects.OreDictItemStack;
 import gregtech.api.recipe.RecipeMap;
-import gregtech.api.util.GTModHandler;
-import gregtech.api.util.GTUtility;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import vazkii.botania.api.BotaniaAPI;
 import vazkii.botania.api.recipe.RecipeManaInfusion;
 
@@ -36,24 +35,16 @@ public class ManaInfusionRecipes implements IRecipePool {
 
             boolean hasOreDict = false;
 
-            List<Object> finalInputs = new ArrayList<>(2);
+            List<Object> finalInputs = new ObjectArrayList<>(2);
 
             if (isAlchemy) {
-                finalInputs.add(GTModHandler.getModItem(Mods.Botania.ID, "alchemyCatalyst", 0));
+                finalInputs.add(ModsItemlist.BotaniaAlchemyCatalyst.get(0));
             } else if (isConjuration) {
-                finalInputs.add(GTModHandler.getModItem(Mods.Botania.ID, "conjurationCatalyst", 0));
-            } else {
-                finalInputs.add(GTUtility.getIntegratedCircuit(1));
+                finalInputs.add(ModsItemlist.BotaniaConjurationCatalyst.get(0));
             }
 
             if (input instanceof ItemStack itemStack) {
-                ItemStack inputCopy = itemStack.copy();
-
-                if (inputCopy.getItemDamage() == Short.MAX_VALUE) {
-                    inputCopy.setItemDamage(0);
-                }
-
-                finalInputs.add(inputCopy);
+                finalInputs.add(itemStack.copy());
             } else if (input instanceof String string) {
                 hasOreDict = true;
                 finalInputs.add(new OreDictItemStack(string, 1));
@@ -63,26 +54,29 @@ public class ManaInfusionRecipes implements IRecipePool {
                 .itemOutputs(output)
                 .fluidInputs(mana)
                 .duration(20)
-                .eut(2048);
+                .eut(TierEU.RECIPE_EV);
 
             if (hasOreDict) {
                 builder.itemInputs(finalInputs.toArray(new Object[0]));
             } else {
                 builder.itemInputs(finalInputs.toArray(new ItemStack[0]));
             }
+            if (!isAlchemy && !isConjuration) {
+                builder.circuit(1);
+            }
             builder.addTo(MIR);
         }
 
         RecipeBuilder.builder()
             .itemInputs(
-                GTModHandler.getModItem(Mods.Botania.ID, "terraPlate", 0),
-                GTModHandler.getModItem(Mods.Botania.ID, "manaResource", 1, 0),
-                GTModHandler.getModItem(Mods.Botania.ID, "manaResource", 1, 1),
-                GTModHandler.getModItem(Mods.Botania.ID, "manaResource", 1, 2))
-            .itemOutputs(GTModHandler.getModItem(Mods.Botania.ID, "manaResource", 1, 4))
+                ModsItemlist.BotaniaTerraPlate.get(0),
+                ModsItemlist.BotaniaManasteelIngot.get(1),
+                ModsItemlist.BotaniaManaPearl.get(1),
+                ModsItemlist.BotaniaManaDiamond.get(1))
+            .itemOutputs(ModsItemlist.BotaniaTerrasteelIngot.get(1))
             .fluidInputs(GTNLMaterials.FluidMana.getFluidOrGas(500000))
             .duration(20)
-            .eut(2048)
+            .eut(TierEU.RECIPE_EV)
             .addTo(MIR);
     }
 }

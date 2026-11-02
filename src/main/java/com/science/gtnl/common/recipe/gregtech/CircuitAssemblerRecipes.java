@@ -1,24 +1,25 @@
 package com.science.gtnl.common.recipe.gregtech;
 
+import net.minecraft.init.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
 
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLMaterials;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.config.RecipeConfig;
 import com.science.gtnl.utils.enums.GTNLItemList;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
 import bartworks.system.material.CircuitGeneration.CircuitPartsItem;
 import bartworks.system.material.WerkstoffLoader;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.objects.SubstituteFluidStack;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTRecipeBuilder;
 import gregtech.api.util.GTRecipeConstants;
@@ -34,7 +35,6 @@ public class CircuitAssemblerRecipes implements IRecipePool {
 
     @Override
     public void loadRecipes() {
-
         RecipeBuilder.builder()
             .itemInputs(
                 ItemList.Battery_RE_ULV_Tantalum.get(4L),
@@ -47,7 +47,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(72))
             .itemOutputs(GTNLItemList.CircuitResonaticULV.get(4))
             .duration(50)
-            .eut(30)
+            .eut(TierEU.RECIPE_LV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -63,7 +63,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(72))
             .itemOutputs(GTNLItemList.CircuitResonaticLV.get(4))
             .duration(90)
-            .eut(120)
+            .eut(TierEU.RECIPE_MV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -79,7 +79,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(72))
             .itemOutputs(GTNLItemList.CircuitResonaticMV.get(4))
             .duration(150)
-            .eut(480)
+            .eut(TierEU.RECIPE_HV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -95,7 +95,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(144))
             .itemOutputs(GTNLItemList.CircuitResonaticHV.get(4))
             .duration(230)
-            .eut(1920)
+            .eut(TierEU.RECIPE_EV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -111,7 +111,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(144))
             .itemOutputs(GTNLItemList.CircuitResonaticEV.get(4))
             .duration(330)
-            .eut(7680)
+            .eut(TierEU.RECIPE_IV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -127,7 +127,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(144))
             .itemOutputs(GTNLItemList.CircuitResonaticIV.get(4))
             .duration(450)
-            .eut(30720)
+            .eut(TierEU.RECIPE_LuV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -143,7 +143,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(144))
             .itemOutputs(GTNLItemList.CircuitResonaticLuV.get(4))
             .duration(570)
-            .eut(122880)
+            .eut(TierEU.RECIPE_ZPM)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -159,7 +159,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(144))
             .itemOutputs(GTNLItemList.CircuitResonaticZPM.get(4))
             .duration(710)
-            .eut(491520)
+            .eut(TierEU.RECIPE_UV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -175,7 +175,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(288))
             .itemOutputs(GTNLItemList.CircuitResonaticUV.get(4))
             .duration(730)
-            .eut(1966080)
+            .eut(TierEU.RECIPE_UHV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -191,7 +191,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(MaterialMisc.MUTATED_LIVING_SOLDER.getFluidStack(432))
             .itemOutputs(GTNLItemList.CircuitResonaticUHV.get(4))
             .duration(750)
-            .eut(7864320)
+            .eut(TierEU.RECIPE_UEV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -207,7 +207,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(GTNLMaterials.SuperMutatedLivingSolder.getFluidOrGas(288))
             .itemOutputs(GTNLItemList.CircuitResonaticUEV.get(4))
             .duration(770)
-            .eut(31457280)
+            .eut(TierEU.RECIPE_UIV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -223,7 +223,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(GTNLMaterials.SuperMutatedLivingSolder.getFluidOrGas(432))
             .itemOutputs(GTNLItemList.CircuitResonaticUIV.get(4))
             .duration(790)
-            .eut(125829120)
+            .eut(TierEU.RECIPE_UMV)
             .requiresCleanRoom()
             .addTo(CAR);
 
@@ -231,16 +231,16 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .itemInputs(
                 ItemList.Circuit_Primitive.get(0),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 1),
-                GTModHandler.getModItem(Mods.Minecraft.ID, "redstone", 1, 0))
+                new ItemStack(Items.redstone))
             .fluidInputs(Materials.Glue.getFluid(20))
             .itemOutputs(GTNLItemList.VerySimpleCircuit.get(2))
             .duration(40)
-            .eut(7)
+            .eut(TierEU.RECIPE_ULV)
             .addTo(CAR);
 
         RecipeBuilder.builder()
             .itemInputs(
-                GTModHandler.getModItem(Mods.IndustrialCraft2.ID, "itemPartCircuit", 0),
+                ModsItemlist.IC2ItemPartCircuit.get(0),
                 GTNLItemList.VerySimpleCircuit.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Iron, 1),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.RedAlloy, 1))
@@ -253,19 +253,19 @@ public class CircuitAssemblerRecipes implements IRecipePool {
         RecipeBuilder.builder()
             .itemInputs(
                 GTUtility.copyAmount(0, ItemList.Circuit_Good.get(1L)),
-                GTModHandler.getModItem(Mods.Minecraft.ID, "paper", 1, 0),
+                new ItemStack(Items.paper),
                 GTNLItemList.SimpleCircuit.get(2),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.CastIron, 1),
                 GTOreDictUnificator.get(OrePrefixes.dustSmall, Materials.Diamond, 1))
             .fluidInputs(Materials.Glue.getFluid(20))
             .itemOutputs(GTNLItemList.BasicCircuit.get(2))
             .duration(160)
-            .eut(30)
+            .eut(TierEU.RECIPE_LV)
             .addTo(CAR);
 
         RecipeBuilder.builder()
             .itemInputs(
-                GTModHandler.getModItem(Mods.IndustrialCraft2.ID, "itemPartCircuitAdv", 0),
+                ModsItemlist.IC2ItemPartCircuitAdv.get(0),
                 ItemList.Circuit_Board_Coated_Basic.get(1L),
                 GTNLItemList.BasicCircuit.get(1),
                 GTOreDictUnificator.get(OrePrefixes.plate, Materials.Steel, 1),
@@ -274,7 +274,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(Materials.Glue.getFluid(20))
             .itemOutputs(GTNLItemList.AdvancedCircuit.get(1))
             .duration(80)
-            .eut(120)
+            .eut(TierEU.RECIPE_MV)
             .addTo(CAR);
 
         RecipeBuilder.builder()
@@ -285,7 +285,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .fluidInputs(SubstituteFluidStack.soldering(144))
             .itemOutputs(GTNLItemList.EliteCircuit.get(1))
             .duration(200)
-            .eut(480)
+            .eut(TierEU.RECIPE_HV)
             .addTo(CAR);
 
         RecipeBuilder.builder()
@@ -301,7 +301,7 @@ public class CircuitAssemblerRecipes implements IRecipePool {
             .eut(TierEU.RECIPE_UV)
             .addTo(CAR);
 
-        if (MainConfig.recipe.enableDeleteRecipe) loadDeleteRecipe();
+        if (RecipeConfig.enableDeleteRecipe) loadDeleteRecipe();
     }
 
     public void loadDeleteRecipe() {

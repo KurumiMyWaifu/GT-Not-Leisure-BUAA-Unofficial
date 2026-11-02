@@ -12,11 +12,8 @@ import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.api.util.GTStructureUtility.chainAllGlasses;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -24,7 +21,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
@@ -36,7 +32,8 @@ import com.cleanroommc.modularui.utils.item.ItemStackHandler;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.science.gtnl.api.mixinHelper.IResearchStationMarker;
-import com.science.gtnl.common.gui.modularui.ResearchCenterGui;
+import com.science.gtnl.common.gui.modularui.multiblock.ResearchCenterGui;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.mixins.late.tecTech.AccessorMTEResearchStation;
 import com.science.gtnl.utils.StructureUtils;
 
@@ -47,6 +44,7 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
@@ -60,6 +58,10 @@ import gregtech.api.util.GTScannerResult;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import tectech.recipe.TecTechRecipeMaps;
 import tectech.thing.metaTileEntity.multi.MTEResearchStation;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
@@ -122,8 +124,8 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
     private int dataSticksToConsume;
 
     private final IItemHandlerModifiable lockedOutputHandler = new ItemStackHandler(lockedOutputs);
-    private final ArrayList<ItemStack> researchStacksToConsume = new ArrayList<>();
-    private final ArrayList<ItemStack> researchOutputsForGUI = new ArrayList<>();
+    private final ObjectArrayList<ItemStack> researchStacksToConsume = new ObjectArrayList<>();
+    private final ObjectArrayList<ItemStack> researchOutputsForGUI = new ObjectArrayList<>();
 
     public ResearchCenter(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -181,29 +183,8 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.research_center.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.research_center.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.research_center.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.research_center.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.research_center.tooltip.3"))
-            .addSupportAny()
-            .beginStructureBlock(37, 8, 10, false)
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.0"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.1"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.2"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.3"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.4"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.research_center.structure.5"))
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.research_center.casing"), 1)
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.research_center.casing"), 1)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.research_center.casing"), 1)
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.research_center.casing"), 1)
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.research_center.casing"), 1)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("tt.keyword.Structure.DataAccessHatch"),
-                StatCollector.translateToLocal("gtnl.machine.research_center.casing"),
-                1)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -226,9 +207,9 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
             return CheckRecipeResultRegistry.NO_DATA_STICKS;
         }
 
-        ArrayList<ItemStack> outputs = new ArrayList<>();
-        ArrayList<ItemStack> researchStacksToConsume = new ArrayList<>();
-        ArrayList<ItemStack> researchOutputsForGUI = new ArrayList<>();
+        ObjectArrayList<ItemStack> outputs = new ObjectArrayList<>();
+        ObjectArrayList<ItemStack> researchStacksToConsume = new ObjectArrayList<>();
+        ObjectArrayList<ItemStack> researchOutputsForGUI = new ObjectArrayList<>();
         ItemStack firstResearchOutput = null;
         long computationRequired = 0;
         int recipeEUt = 0;
@@ -278,7 +259,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.researchStacksToConsume.addAll(researchStacksToConsume);
         this.dataSticksToConsume = outputs.size();
         this.computationRequired = this.computationRemaining = computationRequired;
-        setPacketLossDecayFrom(this.computationRequired);
+        applyPacketLossDecayFrom(this.computationRequired);
         this.mOutputItems = outputs.toArray(new ItemStack[0]);
         this.mEUt = recipeEUt;
         this.eRequiredData = 0;
@@ -354,13 +335,13 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
             return "";
         }
 
-        Map<String, Integer> outputCounts = new LinkedHashMap<>();
+        Object2IntLinkedOpenHashMap<String> outputCounts = new Object2IntLinkedOpenHashMap<>();
         for (ItemStack output : this.researchOutputsForGUI) {
             if (GTUtility.isStackInvalid(output)) {
                 continue;
             }
             String displayName = output.getDisplayName();
-            outputCounts.put(displayName, outputCounts.getOrDefault(displayName, 0) + 1);
+            outputCounts.addTo(displayName, 1);
         }
         if (outputCounts.isEmpty()) {
             return "";
@@ -368,15 +349,15 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
 
         StringBuilder builder = new StringBuilder();
         boolean first = true;
-        for (Map.Entry<String, Integer> entry : outputCounts.entrySet()) {
+        for (Object2IntMap.Entry<String> entry : Object2IntMaps.fastIterable(outputCounts)) {
             if (!first) {
                 builder.append(", ");
             }
             first = false;
             builder.append(entry.getKey());
-            if (entry.getValue() > 1) {
+            if (entry.getIntValue() > 1) {
                 builder.append(" x")
-                    .append(entry.getValue());
+                    .append(entry.getIntValue());
             }
         }
         return builder.toString();
@@ -567,12 +548,12 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.eRequiredData = 0;
         this.eAmpereFlow = 0;
         this.computationRequired = this.computationRemaining = 0;
-        setPacketLossDecayFrom(0);
+        applyPacketLossDecayFrom(0);
         return SimpleCheckRecipeResult.ofSuccess("scanning");
     }
 
     private List<ItemStack> getScannerCandidateItems() {
-        ArrayList<ItemStack> candidates = new ArrayList<>();
+        ObjectArrayList<ItemStack> candidates = new ObjectArrayList<>();
         for (ItemStack input : getAllStoredInputs()) {
             if (GTUtility.isStackValid(input) && !isDataContainer(input)) {
                 candidates.add(input);
@@ -664,7 +645,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
 
     private int countResearchItems(ItemStack researchItem, List<ItemStack> plannedConsumes) {
         int count = 0;
-        ArrayList<ItemStack> inputs = getStoredInputs();
+        List<ItemStack> inputs = getStoredInputs();
         for (ItemStack input : inputs) {
             if (GTUtility.areStacksEqual(researchItem, input, true)) {
                 count += input.stackSize;
@@ -766,16 +747,30 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
 
         ItemStack singleItem = GTUtility.copyAmount(1, stack);
         for (int i = 0; i < stack.stackSize; i++) {
-            if (!depleteInput(singleItem)) {
+            if (!depleteItemDirectly(singleItem)) {
                 return false;
             }
         }
         return true;
     }
 
+    private boolean depleteItemDirectly(ItemStack stack) {
+        for (MTEHatchInputBus hatch : GTUtility.validMTEList(mInputBusses)) {
+            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
+            for (int slot = base.getSizeInventory() - 1; slot >= 0; slot--) {
+                ItemStack inSlot = base.getStackInSlot(slot);
+                if (GTUtility.areStacksEqual(stack, inSlot) && inSlot.stackSize >= stack.stackSize) {
+                    base.decrStackSize(slot, stack.stackSize);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private int countDepletableItems(ItemStack stack) {
         int count = 0;
-        ArrayList<ItemStack> inputs = getStoredInputs();
+        List<ItemStack> inputs = getStoredInputs();
         for (ItemStack input : inputs) {
             if (GTUtility.areStacksEqual(stack, input)) {
                 count += input.stackSize;
@@ -784,7 +779,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         return count;
     }
 
-    private void setPacketLossDecayFrom(long value) {
+    private void applyPacketLossDecayFrom(long value) {
         ((AccessorMTEResearchStation) this).setPacketLossDecayFrom(value);
     }
 
@@ -800,7 +795,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.mEfficiencyIncrease = 0;
         this.mEUt = 0;
         this.computationRequired = this.computationRemaining = 0;
-        setPacketLossDecayFrom(0);
+        applyPacketLossDecayFrom(0);
     }
 
 }

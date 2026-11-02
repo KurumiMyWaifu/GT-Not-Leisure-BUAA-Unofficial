@@ -5,7 +5,8 @@ import net.minecraft.item.ItemStack;
 
 import org.jetbrains.annotations.NotNull;
 
-import com.science.gtnl.container.portableWorkbench.ContainerPortableCompressedChest;
+import com.science.gtnl.common.gui.container.portableWorkbench.ContainerPortableCompressedChest;
+import com.science.gtnl.common.gui.container.portableWorkbench.IPortableStorageHost;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -15,6 +16,10 @@ public class GuiPortablePortableCompressedChest extends GuiPortableAvaritiaddons
 
     public GuiPortablePortableCompressedChest(ItemStack stack, InventoryPlayer playerInv) {
         super(new ContainerPortableCompressedChest(stack, playerInv));
+    }
+
+    public GuiPortablePortableCompressedChest(ItemStack stack, InventoryPlayer playerInv, IPortableStorageHost host) {
+        super(new ContainerPortableCompressedChest(stack, playerInv, host));
     }
 
     @Override

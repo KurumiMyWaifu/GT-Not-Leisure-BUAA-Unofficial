@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Objects;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -18,11 +17,12 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.ScienceNotLeisure;
+import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
 
-import bartworks.system.material.WerkstoffLoader;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Materials;
@@ -39,8 +39,8 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.common.misc.GTStructureChannels;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 public class CheatOreProcessingFactory extends MultiMachineBase<CheatOreProcessingFactory> {
@@ -120,12 +120,11 @@ public class CheatOreProcessingFactory extends MultiMachineBase<CheatOreProcessi
             true);
     }
 
-    // TODO: Use GTNLMaterials
     @Override
     public IStructureDefinition<CheatOreProcessingFactory> getStructureDefinition() {
         return StructureDefinition.<CheatOreProcessingFactory>builder()
             .addShape(STRUCTURE_PIECE_MAIN, StructureUtility.transpose(shape))
-            .addElement('A', StructureUtility.ofBlock(WerkstoffLoader.BWBlockCasings, 31_766 + 300))
+            .addElement('A', GTNLCasings.ReboltedBronzeCasing.asElement())
             .addElement('B', GTStructureUtility.ofFrame(Materials.Bronze))
             .addElement('C', Casings.HeatResistantCokeOvenCasing.asElement())
             .addElement('D', Casings.BronzeGearBoxCasing.asElement())
@@ -139,7 +138,7 @@ public class CheatOreProcessingFactory extends MultiMachineBase<CheatOreProcessi
                         .casingIndex(Casings.BronzePlatedBricks.getTextureId())
                         .hint(1)
                         .build(),
-                    StructureUtility.ofBlock(WerkstoffLoader.BWBlockCasingsAdvanced, 31_766 + 300)))
+                    GTNLCasings.ReboltedBronzeCasing.asElement()))
             .addElement('H', GTStructureUtility.chainAllGlasses())
             .build();
     }
@@ -153,7 +152,7 @@ public class CheatOreProcessingFactory extends MultiMachineBase<CheatOreProcessi
     public CheckRecipeResult OP_Process_Wireless() {
         Object2ObjectOpenHashMap<ItemId, ArrayList<GTRecipe>> recipeIndex = getRecipeIndex();
         ArrayList<ItemStack> inputs = getStoredInputs();
-        ArrayList<ItemStack> outputs = new ArrayList<>(inputs.size());
+        ObjectArrayList<ItemStack> outputs = new ObjectArrayList<>(inputs.size());
         for (ItemStack items : inputs) {
             boolean hasNotFound = true;
             ArrayList<GTRecipe> matchingRecipes = recipeIndex.get(ItemId.createNoCopy(items));
@@ -262,10 +261,8 @@ public class CheatOreProcessingFactory extends MultiMachineBase<CheatOreProcessi
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.cheat_ore_processing_factory.recipe_type"))
-            .beginStructureBlock(41, 26, 18, false)
-            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

@@ -38,9 +38,10 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.util.Vec3Impl;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.api.casing.GTNLCasings;
+import com.science.gtnl.common.machine.multiMachineBase.TTMultiMachineBase;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.enums.BlockIcons;
 
 import gregtech.api.casing.Casings;
@@ -61,11 +62,11 @@ import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.IGTHatchAdder;
-import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.common.WirelessComputationPacket;
 import gtPlusPlus.core.fluids.GTPPFluids;
 import gtPlusPlus.core.material.MaterialsAlloy;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import tectech.mechanics.dataTransport.QuantumDataPacket;
 import tectech.thing.casing.BlockGTCasingsTT;
 import tectech.thing.metaTileEntity.hatch.MTEHatchDataInput;
@@ -76,13 +77,13 @@ import tectech.thing.metaTileEntity.multi.base.INameFunction;
 import tectech.thing.metaTileEntity.multi.base.IStatusFunction;
 import tectech.thing.metaTileEntity.multi.base.LedStatus;
 import tectech.thing.metaTileEntity.multi.base.Parameters;
-import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 import tectech.thing.metaTileEntity.multi.base.render.TTRenderedExtendedFacingTexture;
 import tectech.util.CommonValues;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalConstructable {
+public class SupercomputingCenter extends TTMultiMachineBase implements ISurvivalConstructable {
 
+    private static final String RACK_HATCH_NAME_KEY = "gt.blockmachines.hatch.rack.tier.08.name";
     private static final String STRUCTURE_PIECE_MAIN = "main";
     private static final String SC_STRUCTURE_FILE_PATH = RESOURCE_ROOT_ID + ":" + "multiblock/supercomputing_center";
     private static final String[][] shape = StructureUtils.readStructureFromFile(SC_STRUCTURE_FILE_PATH);
@@ -115,8 +116,8 @@ public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalC
         return LedStatus.STATUS_OK;
     };
 
-    public ArrayList<MTEHatchRack> mRackHatchs = new ArrayList<>();
-    public ArrayList<MTEHatchWirelessComputationOutput> mWirelessComputationOutputHatchs = new ArrayList<>();
+    public ObjectArrayList<MTEHatchRack> mRackHatchs = new ObjectArrayList<>();
+    public ObjectArrayList<MTEHatchWirelessComputationOutput> mWirelessComputationOutputHatchs = new ObjectArrayList<>();
     public Parameters.Group.ParameterIn overclock, overvolt;
     public Parameters.Group.ParameterOut maxCurrentTemp, availableData;
 
@@ -360,7 +361,7 @@ public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalC
 
             if (energyWirelessMode) {
                 BigInteger costEU = BigInteger.valueOf(lEUt);
-                if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(Utils.NEGATIVE_ONE))) {
+                if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(MathUtils.NEGATIVE_ONE))) {
                     return CheckRecipeResultRegistry.insufficientPower(costEU.longValue());
                 }
                 lEUt = 0;
@@ -439,28 +440,8 @@ public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalC
     }
 
     @Override
-    public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.supercomputing_center.tooltip.6"))
-            .addSupportAny()
-            .beginStructureBlock(28, 59, 21, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.supercomputing_center.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.supercomputing_center.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.supercomputing_center.casing"))
-            .toolTipFinisher();
-        return tt;
-    }
-
-    @Override
     public String[] getInfoData() {
-        ArrayList<String> data = new ArrayList<>(Arrays.asList(super.getInfoData()));
+        ObjectArrayList<String> data = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
         if (wirelessMode) {
             WirelessComputationPacket wirelessComputationPacket = WirelessComputationPacket
                 .getPacketByUserId(getBaseMetaTileEntity().getOwnerUuid());
@@ -480,13 +461,7 @@ public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalC
         ItemStack aTool) {
         if (getBaseMetaTileEntity().isServerSide()) {
             wirelessMode = !wirelessMode;
-            if (wirelessMode) {
-                GTUtility.sendChatTrans(aPlayer, "gtnl.machine.message.wireless_mode.enabled");
-                WirelessComputationPacket.enableWirelessNetWork(getBaseMetaTileEntity());
-            } else {
-                GTUtility.sendChatTrans(aPlayer, "gtnl.machine.message.wireless_mode.disabled");
-                WirelessComputationPacket.disableWirelessNetWork(getBaseMetaTileEntity());
-            }
+            switchWirelessComputation(aPlayer, wirelessMode);
         }
     }
 
@@ -590,6 +565,16 @@ public class SupercomputingCenter extends TTMultiblockBase implements ISurvivalC
         @Override
         public IGTHatchAdder<? super SupercomputingCenter> adder() {
             return adder;
+        }
+
+        @Override
+        public String getDescriptionLangKey() {
+            return RACK_HATCH_NAME_KEY;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return StatCollector.translateToLocal(RACK_HATCH_NAME_KEY);
         }
     }
 }

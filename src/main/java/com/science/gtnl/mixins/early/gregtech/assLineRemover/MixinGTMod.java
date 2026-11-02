@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.science.gtnl.config.MainConfig;
-import com.science.gtnl.utils.recipes.AssLineRecipeHook;
+import com.science.gtnl.common.recipe.AssLineRecipeHook;
+import com.science.gtnl.config.RecipeConfig;
 
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import gregtech.GTMod;
@@ -15,8 +15,8 @@ import gregtech.GTMod;
 public class MixinGTMod {
 
     @Inject(method = "onPreInitialization", at = @At("HEAD"))
-    public void science$loadHook(FMLPreInitializationEvent aEvent, CallbackInfo ci) {
-        if (MainConfig.recipe.enableDeleteRecipe) {
+    public void science$loadHook(FMLPreInitializationEvent event, CallbackInfo ci) {
+        if (RecipeConfig.enableDeleteRecipe) {
             AssLineRecipeHook.loadAndInit();
         }
     }

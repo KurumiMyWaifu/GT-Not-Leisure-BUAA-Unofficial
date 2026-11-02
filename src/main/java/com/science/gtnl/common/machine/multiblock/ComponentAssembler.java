@@ -2,14 +2,12 @@ package com.science.gtnl.common.machine.multiblock;
 
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -21,8 +19,8 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.enums.GTNLStructureChannels;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
 
@@ -51,6 +49,7 @@ import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
@@ -64,10 +63,8 @@ public class ComponentAssembler extends MultiMachineBase<ComponentAssembler> imp
     private static final int DEPTH_OFF_SET = 0;
     public static final List<Pair<Block, Integer>> COMPONENT_CASING_VARIANTS = createComponentCasingVariants();
 
-    public int mCasingTier;
-
     public static List<Pair<Block, Integer>> createComponentCasingVariants() {
-        List<Pair<Block, Integer>> casingVariants = new ArrayList<>(8);
+        List<Pair<Block, Integer>> casingVariants = new ObjectArrayList<>(8);
         for (int tier = 0; tier < 8; tier++) {
             casingVariants.add(Pair.of(Loaders.componentAssemblylineCasing, tier));
         }
@@ -105,7 +102,7 @@ public class ComponentAssembler extends MultiMachineBase<ComponentAssembler> imp
             .addElement('A', GTStructureUtility.chainAllGlasses(-1, (te, t) -> te.mGlassTier = t, te -> te.mGlassTier))
             .addElement(
                 'B',
-                GTNLStructureChannels.COMPONENT_ASSEMBLY_LINE_CASING.use(
+                GTStructureChannels.COMPONENT_ASSEMBLYLINE_CASING.use(
                     StructureUtility.ofBlocksTiered(
                         (block, meta) -> block == Loaders.componentAssemblylineCasing ? meta : -1,
                         COMPONENT_CASING_VARIANTS,
@@ -168,7 +165,7 @@ public class ComponentAssembler extends MultiMachineBase<ComponentAssembler> imp
         checkHatch(errors);
         checkCasingMin(errors, mCountCasing, 50);
         checkHatchExact(errors, HatchElement.Maintenance, 1);
-        checkHatchMax(errors, HatchElement.Energy, 2);
+        checkHatchMax(errors, HatchElement.Energy.or(HatchElement.ExoticEnergy), 2);
         if (mCasingTier >= 8) {
             errors.add(StructureErrorRegistry.UNKNOWN_TIER);
         }
@@ -273,27 +270,8 @@ public class ComponentAssembler extends MultiMachineBase<ComponentAssembler> imp
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.component_assembler.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.6"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.7"))
-            .addSupportMultiAmp()
-            .beginStructureBlock(7, 5, 5, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.casing"))
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.casing"))
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.component_assembler.tooltip.casing"))
-            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
-            .addSubChannelUsage(GTNLStructureChannels.COMPONENT_ASSEMBLY_LINE_CASING)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

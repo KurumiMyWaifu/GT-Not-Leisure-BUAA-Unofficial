@@ -14,7 +14,6 @@ import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.api.util.GTStructureUtility.ofFrame;
 import static kekztech.common.Blocks.lscLapotronicEnergyUnit;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +23,6 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -38,29 +35,16 @@ import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructa
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
-import com.gtnewhorizons.modularui.api.drawable.ItemDrawable;
-import com.gtnewhorizons.modularui.api.math.Alignment;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.widget.Widget;
-import com.gtnewhorizons.modularui.common.internal.network.NetworkUtils;
-import com.gtnewhorizons.modularui.common.widget.ChangeableWidget;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.DynamicPositionedColumn;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.MultiChildWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.modularui.EnergyInfuserGui;
+import com.science.gtnl.common.gui.modularui.multiblock.EnergyInfuserGui;
+import com.science.gtnl.common.machine.multiMachineBase.TTMultiMachineBase;
+import com.science.gtnl.compat.cofh.RfItems;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
-import com.science.gtnl.utils.item.ItemUtils;
 
-import cofh.api.energy.IEnergyContainerItem;
 import gregtech.api.GregTechAPI;
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.SoundResource;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -69,23 +53,21 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTUtility;
-import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import ic2.api.item.ElectricItem;
 import ic2.api.item.IElectricItem;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import tectech.thing.metaTileEntity.hatch.MTEHatchEnergyMulti;
-import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
-public class EnergyInfuser extends TTMultiblockBase implements IConstructable, ISurvivalConstructable {
+public class EnergyInfuser extends TTMultiMachineBase implements IConstructable, ISurvivalConstructable {
 
     public static final int maxRepairedDamagePerOperation = 10000;
     public static final long usedEuPerDurability = 1000;
     public static final int usedUumPerDurability = 1;
+    public static final long EU_TO_RF_RATIO = 100L;
     public static final FluidStack UUM_TEMPLATE = Materials.UUMatter.getFluid(1);
     private static final String STRUCTURE_PIECE_MAIN = "main";
     private static final String EI_STRUCTURE_FILE_PATH = RESOURCE_ROOT_ID + ":" + "multiblock/energy_infuser";
@@ -94,7 +76,7 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
     private static final int VERTICAL_OFF_SET = 7;
     private static final int DEPTH_OFF_SET = 0;
 
-    public List<ItemStack> mStoredItems = new ArrayList<>();
+    public List<ItemStack> mStoredItems = new ObjectArrayList<>();
 
     public boolean outputAllItems = false;
     public int mCountCasing;
@@ -180,7 +162,7 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
     public CheckRecipeResult checkProcessing_EM() {
         mEfficiencyIncrease = 10000;
         mMaxProgresstime = 1;
-        List<ItemStack> toStore = new ArrayList<>();
+        List<ItemStack> toStore = new ObjectArrayList<>();
 
         for (ItemStack stack : getAllStoredInputs()) {
             if (ItemUtil.isStackInvalid(stack)) continue;
@@ -210,7 +192,7 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
             return;
         }
 
-        List<ItemStack> remaining = new ArrayList<>(mStoredItems.size());
+        List<ItemStack> remaining = new ObjectArrayList<>(mStoredItems.size());
         long totalEU = getMaxStoredEU();
         long euPerItem = totalEU / mStoredItems.size();
         int remainingUum = getAvailableUumAmount();
@@ -222,19 +204,22 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
                 ItemStack individualStack = stack.copy();
                 individualStack.stackSize = 1;
                 Item item = individualStack.getItem();
+                long remainingEU = euPerItem;
 
                 if (item != null && item.isRepairable()) {
                     int currentDamage = item.getDamage(individualStack);
                     if (currentDamage > 0) {
                         int maxRepair = Math.min(currentDamage, maxRepairedDamagePerOperation);
-                        long possibleRepair = Math.min(maxRepair, euPerItem / usedEuPerDurability);
+                        long possibleRepair = Math.min(maxRepair, remainingEU / usedEuPerDurability);
                         int uumNeeded = (int) (possibleRepair * usedUumPerDurability);
 
                         if (possibleRepair > 0 && uumNeeded <= remainingUum
                             && depleteInput(new FluidStack(Materials.UUMatter.mFluid, uumNeeded))) {
                             remainingUum -= uumNeeded;
                             item.setDamage(individualStack, currentDamage - (int) possibleRepair);
-                            decreaseEUValue(possibleRepair * usedEuPerDurability);
+                            long repairedEU = possibleRepair * usedEuPerDurability;
+                            decreaseEUValue(repairedEU);
+                            remainingEU -= repairedEU;
                         }
                     }
                 }
@@ -242,19 +227,24 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
                 if (item instanceof IElectricItem electricItem) {
                     double missingItemCharge = electricItem.getMaxCharge(individualStack)
                         - ElectricItem.manager.getCharge(individualStack);
-                    double charge = Math.min(missingItemCharge, euPerItem);
-                    long charged = (long) Math.ceil(
-                        ElectricItem.manager
-                            .charge(individualStack, charge, electricItem.getTier(individualStack), true, false));
+                    double charge = Math.min(Math.max(0, missingItemCharge), remainingEU);
+                    long charged = Math.min(
+                        remainingEU,
+                        (long) Math.ceil(
+                            ElectricItem.manager
+                                .charge(individualStack, charge, electricItem.getTier(individualStack), true, false)));
                     decreaseEUValue(charged);
-                } else if (Mods.COFHCore.isModLoaded() && item instanceof IEnergyContainerItem energyContainerItem) {
-                    long rf = Math.min(
-                        energyContainerItem.getMaxEnergyStored(individualStack)
-                            - energyContainerItem.getEnergyStored(individualStack),
-                        euPerItem * GregTechAPI.mEUtoRF / 10L);
-                    int rfToCharge = (int) rf;
-                    rf = energyContainerItem.receiveEnergy(individualStack, rfToCharge, false);
-                    decreaseEUValue(rf * 10L / GregTechAPI.mEUtoRF);
+                } else if (RfItems.isRfItem(item)) {
+                    long missingRF = Math
+                        .max(0L, (long) RfItems.capacity(individualStack) - RfItems.stored(individualStack));
+                    long rfBudget = toRfBudget(remainingEU);
+                    int rfToCharge = (int) Math.min(missingRF, rfBudget);
+                    if (rfToCharge > 0) {
+                        int receivedRF = RfItems.receive(individualStack, rfToCharge);
+                        long acceptedRF = Math.max(0L, Math.min((long) receivedRF, rfToCharge));
+                        long consumedEU = Math.min(remainingEU, toEuCost(acceptedRF));
+                        decreaseEUValue(consumedEU);
+                    }
                 }
 
                 if ((isItemStackFullyCharged(individualStack) && isItemStackFullyRepaired(individualStack))
@@ -295,9 +285,9 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
                 if (ElectricItem.manager.getCharge(stack) < electricItem.getMaxCharge(stack)) {
                     return false;
                 }
-            } else if (Mods.COFHCore.isModLoaded() && item instanceof IEnergyContainerItem energyContainerItem) {
+            } else if (RfItems.isRfItem(item)) {
                 if (item instanceof DraconiumItemBlock && stack.getItemDamage() == 2) return true;
-                if (energyContainerItem.getEnergyStored(stack) < energyContainerItem.getMaxEnergyStored(stack)) {
+                if (RfItems.stored(stack) < RfItems.capacity(stack)) {
                     return false;
                 }
             }
@@ -321,7 +311,7 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
 
     public long getMaxStoredEU() {
         if (wirelessMode) {
-            return Utils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
+            return MathUtils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
         }
 
         long maxStoredEU = 0;
@@ -343,7 +333,33 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
         return maxStoredEU;
     }
 
+    private long toRfBudget(long availableEU) {
+        if (availableEU <= 0 || GregTechAPI.mEUtoRF <= 0) {
+            return 0;
+        }
+
+        long maxSafeEU = (Integer.MAX_VALUE * EU_TO_RF_RATIO) / GregTechAPI.mEUtoRF;
+        if (availableEU > maxSafeEU) {
+            return Integer.MAX_VALUE;
+        }
+
+        return availableEU * GregTechAPI.mEUtoRF / EU_TO_RF_RATIO;
+    }
+
+    private long toEuCost(long rf) {
+        if (rf <= 0 || GregTechAPI.mEUtoRF <= 0) {
+            return 0;
+        }
+
+        long scaledRF = rf * EU_TO_RF_RATIO;
+        return (scaledRF + GregTechAPI.mEUtoRF - 1L) / GregTechAPI.mEUtoRF;
+    }
+
     public void decreaseEUValue(long energyToRemove) {
+        if (energyToRemove <= 0) {
+            return;
+        }
+
         if (wirelessMode) {
             WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, -energyToRemove);
             return;
@@ -388,28 +404,13 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
     }
 
     @Override
-    public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.energy_infuser.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.5"))
-            .addSupportAny()
-            .beginStructureBlock(5, 8, 5, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.energy_infuser.tooltip.casing"))
-            .toolTipFinisher();
-        return tt;
+    public boolean showRecipeTextInGUI() {
+        return false;
     }
 
     @Override
-    public boolean showRecipeTextInGUI() {
-        return false;
+    protected boolean useMui2() {
+        return true;
     }
 
     @Override
@@ -417,22 +418,12 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
         return new EnergyInfuserGui(this);
     }
 
-    @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this MUI1 logo hook after Energy Infuser only uses the MUI2 GUI.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(172, 67));
-    }
-
     public List<ItemStack> getStoredItemsForGui() {
         return mStoredItems != null ? mStoredItems : Collections.emptyList();
     }
 
     public void setStoredItemsFromGui(List<ItemStack> storedItems) {
-        mStoredItems = storedItems != null ? new ArrayList<>(storedItems) : new ArrayList<>();
+        mStoredItems = storedItems != null ? new ObjectArrayList<>(storedItems) : new ObjectArrayList<>();
     }
 
     public int getProgressTimeForGui() {
@@ -457,89 +448,6 @@ public class EnergyInfuser extends TTMultiblockBase implements IConstructable, I
 
     public String appendRateForGui(boolean isFluid, Long amount, boolean parentheses) {
         return appendRate(isFluid, amount, parentheses);
-    }
-
-    @Override
-    @Deprecated
-    public void drawTexts(DynamicPositionedColumn screenElements, SlotWidget inventorySlot) {
-        // TODO: Remove this MUI1 terminal text after Energy Infuser only uses the MUI2 GUI.
-        super.drawTexts(screenElements, inventorySlot);
-        screenElements.widget(
-            TextWidget.dynamicString(this::generateCurrentProgress)
-                .setSynced(false)
-                .setTextAlignment(new Alignment(-1, -1))
-                .setSize(180, 12)
-                .setEnabled(widget -> (mStoredItems != null && !mStoredItems.isEmpty()) || (mMaxProgresstime > 0)));
-        final ChangeableWidget recipeOutputItemsWidget = new ChangeableWidget(this::generateCurrentRecipeInfoWidget);
-        // Display current recipe
-        screenElements.widget(
-            new FakeSyncWidget.ListSyncer<>(
-                () -> mStoredItems != null ? mStoredItems : Collections.emptyList(),
-                val -> {
-                    mStoredItems = val;
-                    recipeOutputItemsWidget.notifyChangeNoSync();
-                },
-                NetworkUtils::writeItemStack,
-                NetworkUtils::readItemStack))
-            .widget(new FakeSyncWidget.IntegerSyncer(() -> mProgresstime, val -> mProgresstime = val))
-            .widget(new FakeSyncWidget.IntegerSyncer(() -> mMaxProgresstime, val -> {
-                mMaxProgresstime = val;
-                recipeOutputItemsWidget.notifyChangeNoSync();
-            }));
-        screenElements.widget(recipeOutputItemsWidget);
-    }
-
-    @Override
-    public Widget generateCurrentRecipeInfoWidget() {
-        final DynamicPositionedColumn processingDetails = new DynamicPositionedColumn();
-
-        if (mStoredItems != null) {
-            final Object2LongOpenHashMap<ItemStack> nameToAmount = new Object2LongOpenHashMap<>();
-
-            for (ItemStack item : mStoredItems) {
-                if (item == null || item.stackSize <= 0) continue;
-
-                nameToAmount.addTo(item, item.stackSize);
-            }
-
-            final List<Object2LongMap.Entry<ItemStack>> sortedList = new ArrayList<>(
-                nameToAmount.object2LongEntrySet());
-
-            sortedList.sort((left, right) -> Long.compare(right.getLongValue(), left.getLongValue()));
-
-            for (Object2LongMap.Entry<ItemStack> entry : sortedList) {
-                long itemCount = entry.getLongValue();
-
-                String itemName = entry.getKey()
-                    .getDisplayName();
-
-                String itemAmountString = EnumChatFormatting.WHITE + " x "
-                    + EnumChatFormatting.GOLD
-                    + GTUtility.formatShortenedLong(itemCount)
-                    + EnumChatFormatting.WHITE
-                    + appendRate(false, itemCount, true);
-
-                String lineText = EnumChatFormatting.AQUA
-                    + GTUtility.truncateText(itemName, 40 - itemAmountString.length())
-                    + itemAmountString;
-
-                String lineTooltip = EnumChatFormatting.AQUA + itemName + "\n" + appendRate(false, itemCount, false);
-
-                processingDetails.widget(
-                    new MultiChildWidget().addChild(
-                        new ItemDrawable(
-                            entry.getKey()
-                                .copy()).asWidget()
-                                    .setSize(8, 8)
-                                    .setPos(0, 0))
-                        .addChild(
-                            new TextWidget(lineText).setTextAlignment(Alignment.CenterLeft)
-                                .addTooltip(lineTooltip)
-                                .setPos(10, 1)));
-            }
-        }
-
-        return processingDetails;
     }
 
     @Override

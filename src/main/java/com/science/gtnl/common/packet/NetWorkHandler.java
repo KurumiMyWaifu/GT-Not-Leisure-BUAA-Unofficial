@@ -2,9 +2,9 @@ package com.science.gtnl.common.packet;
 
 import static com.science.gtnl.ScienceNotLeisure.network;
 
-import com.science.gtnl.common.packet.base.ClientboundPacket;
-import com.science.gtnl.common.packet.base.PayloadHandler;
-import com.science.gtnl.common.packet.base.ServerboundPacket;
+import com.gtnllib.network.ClientboundPacket;
+import com.gtnllib.network.PayloadHandler;
+import com.gtnllib.network.ServerboundPacket;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.relauncher.Side;
@@ -31,6 +31,7 @@ public class NetWorkHandler {
         registerServerbound(WirelessPickBlock.class);
         registerClientbound(SudoPacket.class);
         registerServerbound(NBTUpdatePacket.class);
+        registerServerbound(OpenVeinMiningPickaxeGuiPacket.class);
         registerServerbound(PktPatternTermUploadPattern.class);
         registerServerbound(DirePatternHandler.class);
         registerServerbound(MEChiselSyncParallel.class);
@@ -47,6 +48,36 @@ public class NetWorkHandler {
         registerServerbound(OpenPortableCellWorkbenchSubGuiPacket.class);
         registerClientbound(SuperDualInterfaceFluidSyncPacket.class);
         if (Mods.EtFuturumRequiem.isModLoaded()) registerServerbound(ElytraBoostPacket.class);
+        registerServerbound(ToggleWirelessCardPacket.class);
+        registerServerbound(OpenWirelessCardPacket.class);
+        registerClientbound(WirelessHighlightPacket.class);
+        registerClientbound(WirelessVisualisationPacket.class);
+        registerServerbound(MiniTerminalRequestPacket.class);
+        registerClientbound(MiniTerminalUpdatePacket.class);
+        registerServerbound(YogTerminalActionPacket.class);
+        registerServerbound(CreativeScreenPacket.class);
+        registerClientbound(YogTerminalSyncPacket.class);
+        registerClientbound(YogTerminalStatePacket.class);
+        registerServerbound(UniversalStorageBusActionPacket.class);
+        registerServerbound(QuantumCraftingModePacket.class);
+        registerClientbound(QuantumCraftingAvailabilityPacket.class);
+        registerClientbound(QuantumCraftConfirmPacket.class);
+        registerServerbound(RecursivePatternQueryPacket.class);
+        registerClientbound(RecursivePatternResultPacket.class);
+        registerClientbound(RailgunFireFxPacket.class);
+        registerClientbound(RailgunRecoilFxPacket.class);
+        registerServerbound(RailgunBeamTogglePacket.class);
+        registerServerbound(OpenEquipmentGuiPacket.class);
+        registerServerbound(CelestweaveKeyPacket.class);
+        registerClientbound(RailgunBeamUpdatePacket.class);
+        registerClientbound(RailgunBeamChainFxPacket.class);
+        registerClientbound(RailgunChargeCapPacket.class);
+        registerClientbound(CelestweaveFxPacket.class);
+        registerClientbound(CelestweaveFlightPacket.class);
+        registerServerbound(PortalGunSelectPacket.class);
+        registerServerbound(PortalGunFavoritePacket.class);
+        registerClientbound(CelestweaveFireballPacket.class);
+        registerClientbound(CelestweaveConcealPacket.class);
     }
 
     public static <T extends ClientboundPacket> void registerClientbound(Class<T> packet) {

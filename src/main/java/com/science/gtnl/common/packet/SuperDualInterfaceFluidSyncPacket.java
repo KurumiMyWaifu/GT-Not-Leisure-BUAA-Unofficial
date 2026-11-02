@@ -1,25 +1,28 @@
 package com.science.gtnl.common.packet;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 
+import com.gtnllib.network.ClientboundPacket;
 import com.science.gtnl.client.gui.GuiSuperDualInterfaceFluid;
-import com.science.gtnl.common.packet.base.ClientboundPacket;
 
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.util.item.AEFluidStack;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import io.netty.buffer.ByteBuf;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 public class SuperDualInterfaceFluidSyncPacket extends ClientboundPacket {
 
-    private Map<Integer, IAEFluidStack> stacks = new HashMap<>();
+    private Int2ObjectMap<IAEFluidStack> stacks = new Int2ObjectOpenHashMap<>();
 
     public SuperDualInterfaceFluidSyncPacket() {}
 
-    public SuperDualInterfaceFluidSyncPacket(Map<Integer, IAEFluidStack> stacks) {
+    public SuperDualInterfaceFluidSyncPacket(Int2ObjectMap<IAEFluidStack> stacks) {
         this.stacks = stacks;
     }
 
@@ -40,8 +43,8 @@ public class SuperDualInterfaceFluidSyncPacket extends ClientboundPacket {
     @Override
     protected void write(ByteBuf buf) {
         buf.writeInt(stacks.size());
-        for (Map.Entry<Integer, IAEFluidStack> entry : stacks.entrySet()) {
-            buf.writeInt(entry.getKey());
+        for (Int2ObjectMap.Entry<IAEFluidStack> entry : Int2ObjectMaps.fastIterable(stacks)) {
+            buf.writeInt(entry.getIntKey());
             if (entry.getValue() == null) {
                 buf.writeBoolean(false);
             } else {
@@ -57,10 +60,11 @@ public class SuperDualInterfaceFluidSyncPacket extends ClientboundPacket {
     }
 
     @Override
+    @SideOnly(Side.CLIENT)
     public void handleClient(Minecraft minecraft) {
         if (minecraft.currentScreen instanceof GuiSuperDualInterfaceFluid gui) {
-            for (Map.Entry<Integer, IAEFluidStack> entry : stacks.entrySet()) {
-                gui.update(entry.getKey(), entry.getValue());
+            for (Int2ObjectMap.Entry<IAEFluidStack> entry : Int2ObjectMaps.fastIterable(stacks)) {
+                gui.update(entry.getIntKey(), entry.getValue());
             }
         }
     }

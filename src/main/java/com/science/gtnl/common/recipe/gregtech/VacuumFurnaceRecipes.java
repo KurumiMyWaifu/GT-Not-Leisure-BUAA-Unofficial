@@ -6,7 +6,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.item.items.MilledOre;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.config.RecipeConfig;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
 import bartworks.system.material.WerkstoffLoader;
@@ -17,7 +17,6 @@ import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
 import gregtech.api.util.GTOreDictUnificator;
-import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.fluids.GTPPFluids;
 import gtPlusPlus.core.material.MaterialsElements;
 
@@ -28,7 +27,8 @@ public class VacuumFurnaceRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
         RecipeBuilder.builder()
-            .itemInputs(GTUtility.getIntegratedCircuit(1))
+            .itemInputs()
+            .circuit(1)
             .itemOutputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.NaquadahEnriched, 64),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.NaquadahEnriched, 64),
@@ -45,13 +45,14 @@ public class VacuumFurnaceRecipes implements IRecipePool {
             .duration(2400)
             .addTo(VFR);
 
-        if (MainConfig.recipe.enableDeleteRecipe) loadDeleteRecipe();
+        if (RecipeConfig.enableDeleteRecipe) loadDeleteRecipe();
     }
 
     public void loadDeleteRecipe() {
         RecipeBuilder.builder()
             .setNEIDesc("Remove Change by GTNotLeisure")
-            .itemInputs(GTUtility.getIntegratedCircuit(1))
+            .itemInputs()
+            .circuit(1)
             .itemOutputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Platinum, 64),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Palladium, 32),
@@ -70,7 +71,8 @@ public class VacuumFurnaceRecipes implements IRecipePool {
 
         RecipeBuilder.builder()
             .setNEIDesc("Remove Change by GTNotLeisure")
-            .itemInputs(GTUtility.getIntegratedCircuit(1))
+            .itemInputs()
+            .circuit(1)
             .itemOutputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Erbium, 64),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Neodymium, 64),
@@ -87,7 +89,8 @@ public class VacuumFurnaceRecipes implements IRecipePool {
 
         RecipeBuilder.builder()
             .setNEIDesc("Remove Change by GTNotLeisure")
-            .itemInputs(GTUtility.getIntegratedCircuit(1))
+            .itemInputs()
+            .circuit(1)
             .itemOutputs(
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Iron, 64),
                 GTOreDictUnificator.get(OrePrefixes.dust, Materials.Iron, 64),

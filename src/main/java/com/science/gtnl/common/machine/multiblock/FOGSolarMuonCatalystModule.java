@@ -1,16 +1,15 @@
 package com.science.gtnl.common.machine.multiblock;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
 
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import com.science.gtnl.api.mixinHelper.IFOGModule;
-import com.science.gtnl.common.gui.modularui.FOGModuleGui;
+import com.science.gtnl.common.gui.modularui.multiblock.FOGModuleGui;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.recipes.metadata.SolorMuonCatalystMetadata;
 
@@ -27,6 +26,7 @@ import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.OverclockCalculator;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import lombok.Setter;
 import tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule;
@@ -142,7 +142,7 @@ public class FOGSolarMuonCatalystModule extends MTEBaseModule implements IFOGMod
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> str = new ArrayList<>();
+        ObjectArrayList<String> str = new ObjectArrayList<>();
         str.add(
             IGregTechDeviceInformation.encode(
                 "GT5U.infodata.progress",
@@ -180,37 +180,8 @@ public class FOGSolarMuonCatalystModule extends MTEBaseModule implements IFOGMod
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.fog_solar_muon_catalyst_module.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.2"))
-            .addSeparator(EnumChatFormatting.AQUA, 74)
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.godforge.solar_muon_catalyst_module.tooltip.6"))
-            .beginStructureBlock(7, 7, 13, false)
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "20"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.0"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "20"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.1"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "5"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.2"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "5"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.3"))
-            .addStructureInfo(
-                EnumChatFormatting.GOLD + "1"
-                    + EnumChatFormatting.GRAY
-                    + StatCollector.translateToLocal("gtnl.machine.godforge.module.casing.4"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher(EnumChatFormatting.AQUA, 74);
         return tt;
     }

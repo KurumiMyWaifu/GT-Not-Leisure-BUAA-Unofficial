@@ -1,18 +1,14 @@
 package com.science.gtnl.common.recipe.gregtech;
 
-import net.minecraft.item.ItemStack;
-
-import com.dreammaster.item.NHItemList;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLMaterials;
+import com.science.gtnl.compat.newhorizons.NHCoreItem;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.recipes.EyeOfHarmonyRecipeFactory;
 
 import bartworks.system.material.WerkstoffLoader;
-import cpw.mods.fml.common.Optional;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
-import gregtech.api.util.GTModHandler;
 import gtPlusPlus.core.material.MaterialsElements;
 import gtnhlanth.common.register.WerkstoffMaterialPool;
 import tectech.util.FluidStackLong;
@@ -23,7 +19,7 @@ public class EyeOfHarmonyRecipes implements IRecipePool {
     @Override
     public void loadRecipes() {
         EyeOfHarmonyRecipeFactory.addCustomRecipeEntry(
-            GTModHandler.getModItem(Mods.EternalSingularity.ID, "combined_singularity", 1, 15),
+            ModsItemlist.VoidSingularity.get(1),
             new ItemStackLong[] { new ItemStackLong(WerkstoffMaterialPool.Gangue.get(OrePrefixes.dust, 1), 1519274962L),
                 new ItemStackLong(WerkstoffLoader.Bismutite.get(OrePrefixes.dust, 1), 161842735L),
                 new ItemStackLong(WerkstoffLoader.VanadioOxyDravit.get(OrePrefixes.dust, 1), 154923846L),
@@ -82,8 +78,7 @@ public class EyeOfHarmonyRecipes implements IRecipePool {
                 new ItemStackLong(MaterialsElements.getInstance().GERMANIUM.getDust(1), 408273L),
                 new ItemStackLong(MaterialsElements.getInstance().SELENIUM.getDust(1), 385912L),
                 new ItemStackLong(
-                    Mods.NewHorizonsCoreMod.isModLoaded() ? getChargedCertusQuartzDust()
-                        : Materials.CertusQuartz.getDust(1),
+                    NHCoreItem.ChargedCertusQuartzDust.get(1, Materials.CertusQuartz.getDust(1)),
                     364182L),
                 new ItemStackLong(Materials.Salt.getDust(1), 341928L),
                 new ItemStackLong(Materials.Mica.getDust(1), 325817L),
@@ -117,10 +112,5 @@ public class EyeOfHarmonyRecipes implements IRecipePool {
             10000000000L,
             189744,
             0.65);
-    }
-
-    @Optional.Method(modid = "dreamcraft")
-    public ItemStack getChargedCertusQuartzDust() {
-        return NHItemList.ChargedCertusQuartzDust.get(1);
     }
 }

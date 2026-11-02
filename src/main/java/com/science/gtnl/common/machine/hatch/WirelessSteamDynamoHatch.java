@@ -3,7 +3,6 @@ package com.science.gtnl.common.machine.hatch;
 import static gregtech.common.misc.WirelessNetworkManager.number_of_energy_additions;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -26,32 +25,30 @@ import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.FluidSlotWidget;
 import com.science.gtnl.ScienceNotLeisure;
-import com.science.gtnl.common.gui.modularui.WirelessSteamDynamoHatchGui;
+import com.science.gtnl.common.gui.modularui.hatch.WirelessSteamDynamoHatchGui;
+import com.science.gtnl.common.steam.SteamWirelessNetworkManager;
 import com.science.gtnl.mixins.early.gregtech.AccessorMTEHatch;
-import com.science.gtnl.utils.FluidIdUtils;
 import com.science.gtnl.utils.enums.SteamTypes;
-import com.science.gtnl.utils.item.ItemUtils;
-import com.science.gtnl.utils.world.steam.SteamWirelessNetworkManager;
 import com.science.gtnl.utils.world.teams.TeamNetworkManager;
 
 import gregtech.api.enums.OutputHatchType;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.fluid.IFluidStore;
-import gregtech.api.interfaces.modularui.IAddGregtechLogo;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchOutput;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
-public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidStore, IAddGregtechLogo {
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
+public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidStore {
 
     public UUID ownerUUID;
     public UUID teamUUID;
@@ -71,18 +68,20 @@ public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidSt
     }
 
     @Override
-    public MetaTileEntity newMetaEntity(final IGregTechTileEntity aTileEntity) {
-        return new WirelessSteamDynamoHatch(this.mName, this.mTier, this.mTextures, this.mLockedFluids);
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return mTier == 0 ? "gtnl.hatch.pipeless_steam.vent.name" : "gtnl.hatch.pipeless_jetstream.vent.name";
     }
 
     @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after WirelessSteamDynamoHatch mui2 parity is verified.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_STEAM_LOGO)
-                .setSize(18, 18)
-                .setPos(151, 62));
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
+    }
+
+    @Override
+    public MetaTileEntity newMetaEntity(final IGregTechTileEntity aTileEntity) {
+        return new WirelessSteamDynamoHatch(this.mName, this.mTier, this.mTextures, this.mLockedFluids);
     }
 
     @Override
@@ -138,15 +137,8 @@ public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidSt
     }
 
     @Override
-    @Deprecated
-    public FluidSlotWidget createFluidSlot() {
-        // TODO: Remove this mui1 fallback after WirelessSteamDynamoHatch mui2 parity is verified.
-        return super.createFluidSlot().setFilter(fluid -> FluidIdUtils.matchesAny(mLockedFluids, fluid));
-    }
-
-    @Override
     public String[] getDescription() {
-        ArrayList<String> desc = new ArrayList<>();
+        ObjectArrayList<String> desc = new ObjectArrayList<>();
 
         desc.add(StatCollector.translateToLocal("gtnl.hatch.wireless_steam_dynamo.tooltip.0"));
         desc.add(StatCollector.translateToLocal("gtnl.hatch.wireless_steam_dynamo.tooltip.1"));
@@ -225,13 +217,8 @@ public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidSt
     @Override
     public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
         super.onFirstTick(aBaseMetaTileEntity);
-        ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
-
-        isInTeam = true;
-        teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
-        steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
-
         if (!aBaseMetaTileEntity.isServerSide()) return;
+        refreshSteamNetworkState(aBaseMetaTileEntity);
         tryFetchingSteam();
     }
 
@@ -247,13 +234,27 @@ public class WirelessSteamDynamoHatch extends MTEHatchOutput implements IFluidSt
     public void onPostTick(IGregTechTileEntity baseMetaTileEntity, long tick) {
         super.onPostTick(baseMetaTileEntity, tick);
         if (baseMetaTileEntity.isServerSide() && tick % 200 == 0L) {
-            isInTeam = true;
-            teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
-            steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
+            refreshSteamNetworkState(baseMetaTileEntity);
         }
     }
 
+    private void refreshSteamNetworkState(IGregTechTileEntity baseMetaTileEntity) {
+        UUID baseOwnerUUID = baseMetaTileEntity.getOwnerUuid();
+        if (baseOwnerUUID != null) ownerUUID = baseOwnerUUID;
+        if (ownerUUID == null) {
+            isInTeam = false;
+            teamUUID = null;
+            steamDisplay = BigInteger.ZERO;
+            return;
+        }
+
+        isInTeam = true;
+        teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
+        steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
+    }
+
     private void tryFetchingSteam() {
+        if (ownerUUID == null) return;
         FluidStack currentSteamStack = getFillableStack();
 
         if (currentSteamStack != null && currentSteamStack.amount > 0) {

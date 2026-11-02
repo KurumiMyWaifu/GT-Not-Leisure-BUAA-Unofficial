@@ -1,6 +1,7 @@
 package com.science.gtnl.common.machine.hatch;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.inventory.IInventory;
@@ -17,27 +18,19 @@ import net.minecraftforge.fluids.IFluidHandler;
 import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
+import com.cleanroommc.modularui.utils.fluid.FluidStackTank;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
-import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.capability.item.ItemSink;
 import com.gtnewhorizon.gtnhlib.capability.item.ItemSource;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.gtnewhorizons.modularui.api.ModularUITextures;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.fluid.FluidStackTank;
-import com.gtnewhorizons.modularui.common.widget.ButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.FluidSlotWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
 import com.science.gtnl.api.IRecipeProcessingAwareDualHatch;
 import com.science.gtnl.api.mixinHelper.ISkipStackSizeCheck;
-import com.science.gtnl.common.gui.modularui.HumongousDualInputHatchGui;
-import com.science.gtnl.utils.item.ItemUtils;
+import com.science.gtnl.common.gui.modularui.hatch.HumongousDualInputHatchGui;
 
 import gregtech.GTLoggers;
-import gregtech.api.gui.modularui.GTUITextures;
+import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
@@ -46,6 +39,8 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.shutdown.ShutDownReasonRegistry;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class HumongousDualInputHatch extends DualInputHatch
     implements ISkipStackSizeCheck, IRecipeProcessingAwareDualHatch {
 
@@ -64,6 +59,12 @@ public class HumongousDualInputHatch extends DualInputHatch
     public HumongousDualInputHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
         initializeHumongousStorage(aTier);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.humongous_dual_input." + GTValues.VN[mTier].toLowerCase(Locale.ROOT) + ".name";
     }
 
     @Override
@@ -88,6 +89,7 @@ public class HumongousDualInputHatch extends DualInputHatch
                 fluid -> mStoredFluid[index] = fluid,
                 mCapacityPer);
         }
+        this.inventory = new HumongousInventory(mStoredFluid);
         this.disableSort = true;
     }
 
@@ -346,61 +348,6 @@ public class HumongousDualInputHatch extends DualInputHatch
         return new HumongousDualInputHatchGui(this).build(data, syncManager, uiSettings);
     }
 
-    @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        final int itemColumns = Math.max(1, mTier);
-        final int itemRows = Math.max(1, mTier);
-
-        final int totalWidth = 9 * itemColumns + 36;
-        final int totalHeight = 5 * itemRows + 81;
-        final int centerX = (176 - totalWidth) / 2;
-        final int centerY = (166 - totalHeight) / 2;
-
-        for (int row = 0; row < itemRows; row++) {
-            for (int col = 0; col < itemColumns; col++) {
-                int slotIndex = row * itemColumns + col;
-                if (slotIndex < itemSlotAmount - 1) {
-                    builder.widget(
-                        SlotWidget.phantom(inventoryHandler, slotIndex)
-                            .disableInteraction()
-                            .setBackground(ModularUITextures.ITEM_SLOT)
-                            .setPos(centerX + col * 18 + 5, centerY + row * 18));
-                }
-            }
-        }
-
-        for (int i = 0; i < mTier; i++) {
-            builder.widget(
-                new FluidSlotWidget(fluidTanks[i]).setBackground(ModularUITextures.FLUID_SLOT)
-                    .setPos(centerX + 18 * itemColumns + 5, centerY + i * 18));
-        }
-
-        builder.widget(new ButtonWidget().setOnClick((clickData, widget) -> {
-            if (clickData.mouseButton == 0 && !widget.isClient()) {
-                refundAll();
-            }
-        })
-            .setPlayClickSound(true)
-            .setBackground(GTUITextures.BUTTON_STANDARD, GTUITextures.OVERLAY_BUTTON_EXPORT)
-            .addTooltips(
-                ImmutableList
-                    .of(StatCollector.translateToLocal("gtnl.hatch.humongous_dual_input.tooltip.return_contents")))
-            .setSize(16, 16)
-            .setPos(170 + 4 * (mTier - 1) + mTier / 2, 102 + 14 * (mTier - 1)));
-
-        addGregTechLogo(builder);
-    }
-
-    @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(169 + 4 * (mTier - 1) + mTier / 2, 120 + 14 * (mTier - 1)));
-    }
-
     public void refundAll() {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null) return;
@@ -582,5 +529,50 @@ public class HumongousDualInputHatch extends DualInputHatch
     private ItemStack getArrayStack(ItemStack[] array, int index) {
         if (array == null || index < 0 || index >= array.length) return null;
         return array[index];
+    }
+
+    private class HumongousInventory extends Inventory {
+
+        private HumongousInventory(FluidStack[] fluid) {
+            super(new ItemStack[0], fluid);
+        }
+
+        @Override
+        public ItemStack[] getItemInputs() {
+            if (isEmpty()) return new ItemStack[0];
+
+            ItemStack[] visibleStacks = processing > 0 && containedStacks != null ? containedStacks : mInventory;
+            int itemCount = 0;
+            for (int i = 0; i < getItemStorageSlotCount(); i++) {
+                ItemStack stack = visibleStacks[i];
+                if (stack != null && stack.stackSize > 0) itemCount++;
+            }
+
+            ItemStack circuit = mInventory[getCircuitSlot()];
+            ItemStack[] inputs = new ItemStack[itemCount + (circuit == null ? 0 : 1)];
+            int index = 0;
+            for (int i = 0; i < getItemStorageSlotCount(); i++) {
+                ItemStack stack = visibleStacks[i];
+                if (stack != null && stack.stackSize > 0) inputs[index++] = stack;
+            }
+            if (circuit != null) inputs[index] = circuit;
+            return inputs;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            ItemStack[] visibleStacks = processing > 0 && containedStacks != null ? containedStacks : mInventory;
+            for (int i = 0; i < getItemStorageSlotCount(); i++) {
+                ItemStack stack = visibleStacks[i];
+                if (stack != null && stack.stackSize > 0) return false;
+            }
+            if (mInventory[getCircuitSlot()] != null) return false;
+            if (fluidInventory != null) {
+                for (FluidStack fluid : fluidInventory) {
+                    if (fluid != null && fluid.amount > 0) return false;
+                }
+            }
+            return true;
+        }
     }
 }

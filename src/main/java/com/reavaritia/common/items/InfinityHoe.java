@@ -2,7 +2,6 @@ package com.reavaritia.common.items;
 
 import static com.reavaritia.ReAvaritia.RESOURCE_ROOT_ID;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
@@ -16,20 +15,19 @@ import net.minecraft.init.Items;
 import net.minecraft.item.EnumRarity;
 import net.minecraft.item.ItemHoe;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
-import net.minecraftforge.common.util.EnumHelper;
 
 import com.reavaritia.client.ReAvaCreativeTabs;
+import com.reavaritia.common.ItemLoader;
 import com.reavaritia.utils.enums.ReAvaItemList;
 import com.reavaritia.utils.item.ItemStackWrapper;
 import com.reavaritia.utils.item.ToolHelper;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class InfinityHoe extends ItemHoe {
 
@@ -96,7 +94,7 @@ public class InfinityHoe extends ItemHoe {
 
     public void handleCropOperation(World world, EntityPlayer player) {
         int range = 10;
-        Object2IntMap<ItemStackWrapper> itemCounts = new Object2IntOpenHashMap<>();
+        Object2IntOpenHashMap<ItemStackWrapper> itemCounts = new Object2IntOpenHashMap<>();
 
         for (int dx = -range; dx <= range; dx++) {
             for (int dz = -range; dz <= range; dz++) {
@@ -118,7 +116,7 @@ public class InfinityHoe extends ItemHoe {
 
                         for (ItemStack stack : drops) {
                             ItemStackWrapper key = new ItemStackWrapper(stack);
-                            itemCounts.put(key, itemCounts.getOrDefault(key, 0) + stack.stackSize);
+                            itemCounts.addTo(key, stack.stackSize);
                         }
                     }
                 }
@@ -132,7 +130,7 @@ public class InfinityHoe extends ItemHoe {
 
     public List<ItemStack> harvestAndGetDrops(World world, int x, int y, int z) {
         Block block = world.getBlock(x, y, z);
-        List<ItemStack> drops = new ArrayList<>();
+        List<ItemStack> drops = new ObjectArrayList<>();
 
         if (block == Blocks.melon_block) {
             drops.add(new ItemStack(Items.melon, 9));
@@ -152,7 +150,7 @@ public class InfinityHoe extends ItemHoe {
 
     @Override
     public EnumRarity getRarity(ItemStack stack) {
-        return EnumHelper.addRarity("COSMIC", EnumChatFormatting.RED, "Cosmic");
+        return ItemLoader.COSMIC;
     }
 
     public boolean isHarvestable(Block block, int meta) {

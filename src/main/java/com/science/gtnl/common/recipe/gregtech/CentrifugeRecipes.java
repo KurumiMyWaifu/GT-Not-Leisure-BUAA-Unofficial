@@ -6,17 +6,15 @@ import net.minecraftforge.fluids.FluidStack;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLMaterials;
 import com.science.gtnl.loader.BlockLoader;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
-import gregtech.api.util.GTUtility;
 import gtPlusPlus.core.fluids.GTPPFluids;
 
 public class CentrifugeRecipes implements IRecipePool {
@@ -32,7 +30,7 @@ public class CentrifugeRecipes implements IRecipePool {
                 GTNLMaterials.FerricReeChloride.getFluidOrGas(1000),
                 Materials.Hydrogen.getGas(4000))
             .duration(100)
-            .eut(120)
+            .eut(TierEU.RECIPE_MV)
             .addTo(CNCR);
 
         RecipeBuilder.builder()
@@ -42,11 +40,11 @@ public class CentrifugeRecipes implements IRecipePool {
                 Materials.IronIIIChloride.getFluid(1000),
                 Materials.Water.getFluid(3000))
             .duration(320)
-            .eut(480)
+            .eut(TierEU.RECIPE_HV)
             .addTo(CNCR);
 
         RecipeBuilder.builder()
-            .itemInputs(GTModHandler.getModItem(Mods.DraconicEvolution.ID, "magnet", 0, 1))
+            .itemInputs(ModsItemlist.DraconicEvolutionAwakenedItemDislocator.get(0))
             .fluidInputs(GTNLMaterials.RareEarthChlorides.getFluidOrGas(2000))
             .fluidOutputs(
                 GTNLMaterials.LaNdOxidesSolution.getFluidOrGas(250),
@@ -55,7 +53,7 @@ public class CentrifugeRecipes implements IRecipePool {
                 GTNLMaterials.ErLuOxidesSolution.getFluidOrGas(250),
                 Materials.HydrochloricAcid.getFluid(1000))
             .duration(200)
-            .eut(480)
+            .eut(TierEU.RECIPE_HV)
             .addTo(CNCR);
 
         RecipeBuilder.builder()
@@ -81,7 +79,8 @@ public class CentrifugeRecipes implements IRecipePool {
             .addTo(CNCR);
 
         RecipeBuilder.builder()
-            .itemInputs(GTUtility.getIntegratedCircuit(1))
+            .itemInputs()
+            .circuit(1)
             .fluidInputs(FluidRegistry.getFluidStack("for.honey", 1000))
             .fluidOutputs(new FluidStack(BlockLoader.honeyFluid, 1000))
             .duration(300)

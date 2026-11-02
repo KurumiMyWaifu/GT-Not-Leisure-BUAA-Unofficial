@@ -3,9 +3,9 @@ package com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -23,20 +23,22 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.ScienceNotLeisure;
 import com.science.gtnl.api.IWirelessEnergy;
 import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.hatch.ParallelControllerHatch;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.render.tile.KuangBiaoOneGiantNuclearFusionReactorRenderer;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
@@ -76,6 +78,7 @@ import gregtech.api.util.shutdown.ShutDownReasonRegistry;
 import gregtech.common.render.IMTERenderer;
 import gtPlusPlus.core.block.ModBlocks;
 import gtnhlanth.common.register.LanthItemList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
@@ -238,39 +241,18 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
     }
 
     @Override
+    public Map<String, Object> getTooltipVars() {
+        return ImmutableMap.of(
+            "energy_storage",
+            NumberFormatUtil.formatNumber(maxEUStore()),
+            "max_voltage",
+            GTValues.TIER_COLORS[getRecipeMaxTier()] + GTValues.VN[getRecipeMaxTier()]);
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.0"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "gtnl.machine.extreme_fusion_reactor.tooltip.1",
-                    (int) ((getMachineDurationModifier() - 1) * 100)))
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "gtnl.machine.extreme_fusion_reactor.tooltip.2",
-                    (int) (getMachineEUtDiscount() * 100)))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.3"))
-            .addInfo(
-                StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.4")
-                    + NumberFormatUtil.formatNumber(maxEUStore())
-                    + " EU")
-            .addInfo(
-                StatCollector.translateToLocalFormatted(
-                    "gtnl.machine.extreme_fusion_reactor.tooltip.5",
-                    GTValues.TIER_COLORS[getRecipeMaxTier()] + GTValues.VN[getRecipeMaxTier()]))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.6"))
-            .addPerfectOCInfo()
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addSupportAny()
-            .beginStructureBlock(39, 17, 39, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.casing"))
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.extreme_fusion_reactor.tooltip.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this, "gtnl.machine.extreme_fusion_reactor")
             .toolTipFinisher();
         return tt;
     }
@@ -563,6 +545,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
 
     public abstract int getRecipeMaxTier();
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class LuVTier extends KuangBiaoOneGiantNuclearFusionReactor {
 
         public LuVTier(int aID, String aName, String aNameRegional) {
@@ -619,6 +602,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
         }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class ZPMTier extends KuangBiaoOneGiantNuclearFusionReactor {
 
         public ZPMTier(int aID, String aName, String aNameRegional) {
@@ -675,6 +659,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
         }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class UVTier extends KuangBiaoOneGiantNuclearFusionReactor {
 
         public UVTier(int aID, String aName, String aNameRegional) {
@@ -731,6 +716,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
         }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class UHVTier extends KuangBiaoOneGiantNuclearFusionReactor {
 
         public UHVTier(int aID, String aName, String aNameRegional) {
@@ -812,7 +798,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
         public UUID ownerUUID;
         public boolean isRecipeProcessing = false;
         public BigInteger costingEU = BigInteger.ZERO;
-        public String costingEUText = Utils.ZERO_STRING;
+        public String costingEUText = MathUtils.ZERO_STRING;
         public int cycleNum = 100_000;
         public int cycleNow = 0;
 
@@ -962,7 +948,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
 
         @Override
         public String[] getInfoData() {
-            List<String> ret = new ArrayList<>(Arrays.asList(super.getInfoData()));
+            List<String> ret = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
             if (wirelessMode) {
                 ret.add(
                     EnumChatFormatting.LIGHT_PURPLE + IGregTechDeviceInformation.encode("gtnl.waila.wireless.mode"));
@@ -1000,8 +986,8 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
                     var calculator = super.createOverclockCalculator(recipe).setExtraDurationModifier(mConfigSpeedBoost)
                         .setAmperageOC(true)
                         .setPerfectOC(getPerfectOC())
-                        .setEUtDiscount(0.4 - (mParallelTier / 50.0))
-                        .setDurationModifier(1.0 / 10.0 * Math.pow(0.75, mParallelTier));
+                        .setEUtDiscount(0.4D - (mParallelTier / 50.0D))
+                        .setDurationModifier(1.0D / 10.0D * Math.pow(0.75D, mParallelTier));
                     if (wirelessMode) {
                         calculator = calculator.setAmperage((8L << (2 * mParallelTier)) - 2L)
                             .setEUt(GTValues.V[Math.min(mParallelTier + 1, 14)]);
@@ -1140,7 +1126,7 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
             maxParallelStored = -1;
             resetParallelTier();
             costingEU = BigInteger.ZERO;
-            costingEUText = Utils.ZERO_STRING;
+            costingEUText = MathUtils.ZERO_STRING;
             totalOverclockedDuration = 0;
             cycleNow = 0;
             if (!wirelessMode) return super.checkProcessing();
@@ -1189,14 +1175,14 @@ public abstract class KuangBiaoOneGiantNuclearFusionReactor
             BigInteger costEU = BigInteger.valueOf(processingLogic.getCalculatedEut())
                 .multiply(BigInteger.valueOf(processingLogic.getDuration()));
 
-            if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(Utils.NEGATIVE_ONE))) {
+            if (!addEUToGlobalEnergyMap(ownerUUID, costEU.multiply(MathUtils.NEGATIVE_ONE))) {
                 return CheckRecipeResultRegistry.insufficientPower(costEU.longValue());
             }
 
             costingEU = costingEU.add(costEU);
 
-            mOutputItems = Utils.mergeArray(mOutputItems, processingLogic.getOutputItems());
-            mOutputFluids = Utils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+            mOutputItems = MathUtils.mergeArray(mOutputItems, processingLogic.getOutputItems());
+            mOutputFluids = MathUtils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
             totalOverclockedDuration += processingLogic.getDuration();
             maxParallelStored = maxParallelStored - processingLogic.getCurrentParallels();
 

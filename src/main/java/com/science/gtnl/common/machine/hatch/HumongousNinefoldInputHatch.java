@@ -1,10 +1,13 @@
 package com.science.gtnl.common.machine.hatch;
 
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.modularui.IAddGregtechLogo;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class HumongousNinefoldInputHatch extends NinefoldInputHatch implements IAddGregtechLogo {
 
     public HumongousNinefoldInputHatch(int aID, int aSlot, String aName, String aNameRegional) {
@@ -14,6 +17,12 @@ public class HumongousNinefoldInputHatch extends NinefoldInputHatch implements I
     public HumongousNinefoldInputHatch(String aName, int aSlot, int aTier, String[] aDescription,
         ITexture[][][] aTextures) {
         super(aName, aSlot, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.humongous_ninefold_input.name";
     }
 
     @Override

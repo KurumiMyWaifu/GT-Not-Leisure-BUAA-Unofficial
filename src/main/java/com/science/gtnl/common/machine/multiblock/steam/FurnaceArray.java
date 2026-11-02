@@ -2,10 +2,8 @@ package com.science.gtnl.common.machine.multiblock.steam;
 
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -23,16 +21,14 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.gtnewhorizons.modularui.api.math.Alignment;
-import com.gtnewhorizons.modularui.common.widget.DynamicPositionedColumn;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
+import com.reavaritia.utils.item.ItemStackWrapper;
+import com.reavaritia.utils.item.ToolHelper;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.modularui.FurnaceArrayGui;
+import com.science.gtnl.common.gui.modularui.multiblock.FurnaceArrayGui;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
-import com.science.gtnl.utils.Utils;
-import com.science.gtnl.utils.event.SubscribeEventUtils;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
+import com.science.gtnl.common.tickrate.TickrateEvents;
+import com.science.gtnl.utils.machine.MachineUtils;
 
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Textures;
@@ -50,6 +46,8 @@ import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements ISurvivalConstructable {
@@ -160,14 +158,14 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
         time = (long) (maxParallel / 5d + adjustmentFactor);
         if (time < 0) time = 0;
 
-        List<ItemStack> outputSlots = new ArrayList<>();
+        List<ItemStack> outputSlots = new ObjectArrayList<>();
         for (ItemStack stack : getItemOutputSlots(null)) {
             outputSlots.add(stack != null ? stack.copy() : null);
         }
 
         boolean hasMEOutputBus = false;
         for (final IOutputBus bus : GTUtility.validMTEList(mOutputBusses)) {
-            if (Utils.isMEOutputBus(bus) && !bus.isFiltered()
+            if (MachineUtils.isMEOutputBus(bus) && !bus.isFiltered()
                 && bus.createTransaction()
                     .hasAvailableSpace()) {
                 hasMEOutputBus = true;
@@ -175,7 +173,7 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
             }
         }
 
-        ArrayList<ItemStack> smeltedOutputs = new ArrayList<>();
+        ObjectArrayList<ItemStack> smeltedOutputs = new ObjectArrayList<>();
         long toSmelt = maxParallel;
         boolean outputFull = false;
 
@@ -257,7 +255,7 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
     @Override
     public boolean onRunningTick(ItemStack aStack) {
         if (++tick % 20 == 0) {
-            SubscribeEventUtils.queueServerSleep(time);
+            TickrateEvents.queueServerSleep(time);
         }
         return super.onRunningTick(aStack);
     }
@@ -283,28 +281,32 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
         if (te.isClientSide()) return;
 
         World world = te.getWorld();
-        int x = te.getXCoord();
-        int y = te.getYCoord();
-        int z = te.getZCoord();
+        double x = te.getXCoord();
+        double y = te.getYCoord();
+        double z = te.getZCoord();
 
-        long remainingFurnace = furnaceCount - 1;
-        while (remainingFurnace > 0) {
-            int dropAmount = (int) Math.min(64, remainingFurnace);
-            ItemStack drop = FURNACE_STACK.copy();
-            drop.stackSize = dropAmount;
-            EntityItem ent = new EntityItem(world, x, y, z, drop);
-            world.spawnEntityInWorld(ent);
-            remainingFurnace -= dropAmount;
+        Object2IntOpenHashMap<ItemStackWrapper> mergedDrops = new Object2IntOpenHashMap<>();
+
+        if (furnaceCount > 1) {
+            long count = furnaceCount - 1;
+            while (count > 0) {
+                int amount = (int) Math.min(count, Integer.MAX_VALUE);
+                mergedDrops.addTo(new ItemStackWrapper(FURNACE_STACK), amount);
+                count -= amount;
+            }
         }
 
-        long remainingCoal = coalCount / 2;
-        while (remainingCoal > 0) {
-            int dropAmount = (int) Math.min(64, remainingCoal);
-            ItemStack drop = COAL_STACK.copy();
-            drop.stackSize = dropAmount;
-            EntityItem ent = new EntityItem(world, x, y, z, drop);
-            world.spawnEntityInWorld(ent);
-            remainingCoal -= dropAmount;
+        if (coalCount >= 2) {
+            long count = coalCount / 2;
+            while (count > 0) {
+                int amount = (int) Math.min(count, Integer.MAX_VALUE);
+                mergedDrops.addTo(new ItemStackWrapper(COAL_STACK), amount);
+                count -= amount;
+            }
+        }
+
+        if (!mergedDrops.isEmpty()) {
+            ToolHelper.generateMatterCluster(world, x + 0.5, y + 0.5, z + 0.5, mergedDrops);
         }
     }
 
@@ -375,17 +377,8 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.furnace_array.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.furnace_array.info.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.furnace_array.info.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.furnace_array.info.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.furnace_array.info.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.furnace_array.info.4"))
-            .beginStructureBlock(3, 3, 3, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.furnace_array.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.furnace_array.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.furnace_array.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -408,27 +401,5 @@ public class FurnaceArray extends SteamMultiMachineBase<FurnaceArray> implements
     @Override
     protected boolean supportsCraftingMEBuffer() {
         return false;
-    }
-
-    @Override
-    @Deprecated
-    public void drawTexts(DynamicPositionedColumn screenElements, SlotWidget inventorySlot) {
-        // TODO: Remove this mui1 fallback after the Furnace Array terminal text is fully ported to mui2.
-        super.drawTexts(screenElements, inventorySlot);
-        screenElements
-            .widget(
-                new TextWidget()
-                    .setStringSupplier(
-                        () -> StatCollector
-                            .translateToLocalFormatted("gtnl.machine.furnace_array.furnace_count", furnaceCount))
-                    .setTextAlignment(Alignment.CenterLeft)
-                    .setDefaultColor(COLOR_TEXT_WHITE.get()))
-            .widget(
-                new TextWidget().setStringSupplier(
-                    () -> StatCollector.translateToLocalFormatted("gtnl.machine.furnace_array.coal_count", coalCount))
-                    .setTextAlignment(Alignment.CenterLeft)
-                    .setDefaultColor(COLOR_TEXT_WHITE.get()))
-            .widget(new FakeSyncWidget.LongSyncer(() -> furnaceCount, f -> furnaceCount = f))
-            .widget(new FakeSyncWidget.LongSyncer(() -> coalCount, c -> coalCount = c));
     }
 }

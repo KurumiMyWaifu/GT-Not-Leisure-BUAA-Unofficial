@@ -5,7 +5,6 @@ import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -16,7 +15,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -38,36 +36,26 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.gtnewhorizons.modularui.api.drawable.IDrawable;
-import com.gtnewhorizons.modularui.api.drawable.UITexture;
-import com.gtnewhorizons.modularui.api.math.Alignment;
-import com.gtnewhorizons.modularui.api.math.Color;
-import com.gtnewhorizons.modularui.api.math.Size;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.widget.ButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
-import com.gtnewhorizons.modularui.common.widget.textfield.NumericWidget;
-import com.science.gtnl.common.gui.modularui.GrandAssemblyLineGui;
+import com.gtnllib.utils.MathUtils;
+import com.science.gtnl.common.gui.modularui.multiblock.GrandAssemblyLineGui;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.enums.BlockIcons;
+import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 import com.science.gtnl.utils.structure.GTNLStructureErrors;
 
 import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Textures;
 import gregtech.api.enums.VoidingMode;
-import gregtech.api.gui.modularui.GTUITextures;
+import gregtech.api.enums.VoltageIndex;
 import gregtech.api.interfaces.IHatchElement;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
-import gregtech.api.metatileentity.BaseTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.metatileentity.implementations.MTEHatchDataAccess;
 import gregtech.api.recipe.RecipeMap;
@@ -82,8 +70,8 @@ import gregtech.api.util.GTRecipeBuilder;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.api.util.ParallelHelper;
 import gregtech.api.util.VoidProtectionHelper;
+import gregtech.api.util.tooltip.TooltipHelper;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.IDualInputHatch;
@@ -103,15 +91,16 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
 
     public static Object2IntMap<ItemId> specialRecipe = new Object2IntOpenHashMap<>();
 
-    public static int PARALLEL_WINDOW_ID = 10;
     private static final String STRUCTURE_PIECE_MAIN = "main";
     private static final String GAL_STRUCTURE_FILE_PATH = RESOURCE_ROOT_ID + ":" + "multiblock/grand_assembly_line";
     private static final String[][] shape = StructureUtils.readStructureFromFile(GAL_STRUCTURE_FILE_PATH);
     private static final int HORIZONTAL_OFF_SET = 46;
     private static final int VERTICAL_OFF_SET = 2;
     private static final int DEPTH_OFF_SET = 0;
+    private static final int UNLIMITED_ENERGY_HATCH_TIER = VoltageIndex.UHV, WIRELESS_TIER = VoltageIndex.UMV;
+    private static final String PARALLEL_CONTROLLER_KEY = "gtnl.machine.grand_assembly_line.parallel_controller.";
     public List<MTEHatchDataAccess> mDataAccessHatches = new ObjectArrayList<>();
-    public String costingEUText = Utils.ZERO_STRING;
+    public String costingEUText = MathUtils.ZERO_STRING;
     public UUID ownerUUID;
     public boolean wirelessMode = false;
     public int minRecipeTime = 50;
@@ -203,6 +192,16 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
     }
 
     @Override
+    public List<String> getStructureTooltipCasingRequirements(int minimum) {
+        return List.of(
+            StatCollector.translateToLocalFormatted(
+                "gtnl.machine.grand_assembly_line.tooltip.casing_total",
+                Casings.AdvancedComputerCasing.getLocalizedName(),
+                Casings.ReinforcedGlass.getLocalizedName(),
+                minimum));
+    }
+
+    @Override
     public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack, List<StructureError> errors) {
         if (!checkPiece(STRUCTURE_PIECE_MAIN, HORIZONTAL_OFF_SET, VERTICAL_OFF_SET, DEPTH_OFF_SET, errors)) return;
         setupParameters();
@@ -212,10 +211,10 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
 
     @Override
     public void checkHatch(List<StructureError> errors) {
-        if (mParallelTier < 9) {
+        if (mParallelTier < UNLIMITED_ENERGY_HATCH_TIER) {
             checkEnergyHatch(errors);
         }
-        if (mParallelTier >= 12 && mEnergyHatches.isEmpty() && mExoticEnergyHatches.isEmpty()) {
+        if (mParallelTier >= WIRELESS_TIER && mEnergyHatches.isEmpty() && mExoticEnergyHatches.isEmpty()) {
             wirelessMode = true;
             mEnergyHatchTier = 14;
             checkHatchMax(errors, HatchElement.Maintenance, 1);
@@ -273,7 +272,7 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
         long energyEU;
 
         if (wirelessMode) {
-            energyEU = Utils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
+            energyEU = MathUtils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
         } else {
             energyEU = getMaxInputEu();
         }
@@ -303,8 +302,8 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
         for (byte color = 0; color < (doColorChecking ? 16 : 1); color++) {
             if (isColorAbsent(hatchColors, color)) continue;
 
-            List<ItemStack> inputItems = new ArrayList<>(getStoredInputsForColor(Optional.of(color)));
-            List<FluidStack> inputFluids = new ArrayList<>(getStoredFluidsForColor(Optional.of(color)));
+            List<ItemStack> inputItems = new ObjectArrayList<>(getStoredInputsForColor(Optional.of(color)));
+            List<FluidStack> inputFluids = new ObjectArrayList<>(getStoredFluidsForColor(Optional.of(color)));
 
             if (getControllerSlot() != null) {
                 inputItems.add(getControllerSlot());
@@ -352,7 +351,7 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
         }
 
         BigInteger wirelessUserEU = wirelessMode ? WirelessNetworkManager.getUserEU(ownerUUID) : BigInteger.ZERO;
-        List<RecipeTask> tasks = new ArrayList<>();
+        List<RecipeTask> tasks = new ObjectArrayList<>();
         int remainingGlobalParallel = maxParallel;
         long currentWiredInstantPower = 0; // 有线模式累计瞬时功率
         BigInteger currentWirelessTotalEnergy = BigInteger.ZERO; // 无线模式累计消耗总量
@@ -427,9 +426,9 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
 
                 // 溢出保护检查
                 if (protectsExcessItem()) {
-                    ArrayList<ItemStack> pred = new ArrayList<>();
+                    List<ItemStack> pred = new ObjectArrayList<>();
                     ItemStack out = recipe.mOutput.copy();
-                    ParallelHelper.addItemsLong(pred, out, (long) out.stackSize * finalParallel);
+                    GTNLParallelHelper.addItemsLong(pred, out, (long) out.stackSize * finalParallel);
                     VoidProtectionHelper vph = new VoidProtectionHelper();
                     vph.setMachine(this)
                         .setItemOutputs(pred.toArray(new ItemStack[0]))
@@ -465,78 +464,72 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
         }
 
         // 第二阶段：尝试超频
-        int overclockFactor = (mParallelTier >= 11) ? 4 : 2;
+        int overclockFactor = getPerfectOC() ? 4 : 2;
 
         for (RecipeTask task : tasks) {
             BigInteger taskParallelBI = BigInteger.valueOf(task.parallel);
             if (wirelessMode) {
                 // 无线模式：基于总量进行超频，尽量压到 minDuration
-                while (true) {
-                    long nextPower = task.adjustedPower * 4;
-                    int nextTime = task.adjustedTime / overclockFactor;
-                    if (nextTime < minDuration) break;
-
-                    BigInteger currentTaskTotal = BigInteger.valueOf(task.adjustedPower * task.adjustedTime)
-                        .multiply(taskParallelBI);
-                    BigInteger nextTaskTotal = BigInteger.valueOf(nextPower * nextTime)
-                        .multiply(taskParallelBI);
-
-                    // 检查增加超频后总量是否依然足够
-                    if (currentWirelessTotalEnergy.subtract(currentTaskTotal)
-                        .add(nextTaskTotal)
-                        .compareTo(wirelessUserEU) <= 0) {
-                        currentWirelessTotalEnergy = currentWirelessTotalEnergy.subtract(currentTaskTotal)
-                            .add(nextTaskTotal);
-                        task.adjustedPower = nextPower;
-                        task.adjustedTime = nextTime;
-                    } else break;
-                }
+                BigInteger currentTaskTotal = GrandAssemblyLineOverclockTool
+                    .getTotalEnergy(task.adjustedPower, task.adjustedTime, task.parallel);
+                BigInteger otherTasksEnergy = currentWirelessTotalEnergy.subtract(currentTaskTotal);
+                final GrandAssemblyLineOverclockTool.Result overclock = GrandAssemblyLineOverclockTool
+                    .applyWirelessOverclock(
+                        task.adjustedPower,
+                        task.adjustedTime,
+                        wirelessUserEU.subtract(otherTasksEnergy),
+                        task.parallel,
+                        minDuration,
+                        overclockFactor);
+                task.adjustedPower = overclock.power();
+                task.adjustedTime = overclock.duration();
+                currentWirelessTotalEnergy = otherTasksEnergy.add(
+                    GrandAssemblyLineOverclockTool
+                        .getTotalEnergy(task.adjustedPower, task.adjustedTime, task.parallel));
             } else {
                 // 有线模式：基于瞬时功率进行超频
-                int ocCount = 0;
                 long availableInstant = energyEU - (currentWiredInstantPower - (task.adjustedPower * task.parallel));
-                long ratio = availableInstant / Math.max(1, (task.adjustedPower * task.parallel));
-                long thresh = 1;
-                while (ratio >= thresh * 4) {
-                    ocCount++;
-                    thresh *= 4;
-                }
-
-                while (ocCount > 0 && task.adjustedPower * 4 <= Integer.MAX_VALUE
-                    && task.adjustedTime / overclockFactor >= minDuration) {
-                    long addedInstant = (task.adjustedPower * 3) * task.parallel;
-                    if (currentWiredInstantPower + addedInstant <= energyEU) {
-                        task.adjustedPower *= 4;
-                        task.adjustedTime /= overclockFactor;
-                        currentWiredInstantPower += addedInstant;
-                        ocCount--;
-                    } else break;
-                }
+                final GrandAssemblyLineOverclockTool.Result overclock = GrandAssemblyLineOverclockTool
+                    .applyWiredOverclock(
+                        task.adjustedPower,
+                        task.adjustedTime,
+                        availableInstant,
+                        task.parallel,
+                        minDuration,
+                        overclockFactor);
+                task.adjustedPower = overclock.power();
+                task.adjustedTime = overclock.duration();
+                currentWiredInstantPower += overclock.addedInstantPower();
             }
 
             // 批处理逻辑：在功率限制内延长至 128t
             if (task.adjustedTime < 128 && batchMode) {
-                double tFactor = 128.0 / task.adjustedTime;
+                BigInteger extendedPower = BigInteger.valueOf(task.adjustedPower)
+                    .multiply(BigInteger.valueOf(128))
+                    .divide(BigInteger.valueOf(task.adjustedTime));
+                if (extendedPower.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) continue;
+                long extendedPowerLong = extendedPower.longValueExact();
                 if (wirelessMode) {
                     // 无线模式只需检查余额
-                    BigInteger currentTotal = BigInteger.valueOf(task.adjustedPower * task.adjustedTime)
-                        .multiply(taskParallelBI);
-                    BigInteger extendedTotal = BigInteger.valueOf((long) (task.adjustedPower * tFactor * 128))
-                        .multiply(taskParallelBI);
+                    BigInteger currentTotal = GrandAssemblyLineOverclockTool
+                        .getTotalEnergy(task.adjustedPower, task.adjustedTime, task.parallel);
+                    BigInteger extendedTotal = GrandAssemblyLineOverclockTool
+                        .getTotalEnergy(extendedPowerLong, 128, task.parallel);
                     if (currentWirelessTotalEnergy.subtract(currentTotal)
                         .add(extendedTotal)
                         .compareTo(wirelessUserEU) <= 0) {
                         currentWirelessTotalEnergy = currentWirelessTotalEnergy.subtract(currentTotal)
                             .add(extendedTotal);
-                        task.adjustedPower = (long) (task.adjustedPower * tFactor);
+                        task.adjustedPower = extendedPowerLong;
                         task.adjustedTime = 128;
                     }
                 } else {
-                    // 有线模式需检查瞬时功率是否超标
-                    long maxEUt = energyEU / task.parallel;
-                    if (task.adjustedPower * tFactor <= maxEUt) {
-                        currentWiredInstantPower += (long) (task.adjustedPower * (tFactor - 1)) * task.parallel;
-                        task.adjustedPower = (long) (task.adjustedPower * tFactor);
+                    // Reserve the power already used by every other task before extending this one.
+                    long otherTasksPower = currentWiredInstantPower - task.adjustedPower * task.parallel;
+                    BigInteger extendedInstantPower = extendedPower.multiply(taskParallelBI);
+                    if (extendedInstantPower.compareTo(BigInteger.valueOf(energyEU - otherTasksPower)) <= 0) {
+                        currentWiredInstantPower = otherTasksPower + extendedInstantPower.longValueExact();
+                        task.adjustedPower = extendedPowerLong;
                         task.adjustedTime = 128;
                     }
                 }
@@ -545,61 +538,34 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
         }
 
         // 最终结算
-        ArrayList<ItemStack> totalOutputs = new ArrayList<>();
+        List<ItemStack> totalOutputs = new ObjectArrayList<>();
 
-        long weightedDurationSum = 0;
-        long totalWeight = 0;
-        long totalEU_Long = 0;
-
-        BigInteger totalEU_BI = BigInteger.ZERO;
+        GrandAssemblyLineOverclockTool.EnergyTotals totals = new GrandAssemblyLineOverclockTool.EnergyTotals();
 
         for (RecipeTask task : tasks) {
             ItemStack out = task.recipe.mOutput.copy();
-            ParallelHelper.addItemsLong(totalOutputs, out, (long) out.stackSize * task.parallel);
+            GTNLParallelHelper.addItemsLong(totalOutputs, out, (long) out.stackSize * task.parallel);
 
-            long weight = task.adjustedPower * task.parallel;
-            weightedDurationSum += (long) task.adjustedTime * weight;
-            totalWeight += weight;
-
-            if (wirelessMode) {
-                totalEU_BI = totalEU_BI.add(
-                    BigInteger.valueOf(task.adjustedPower)
-                        .multiply(BigInteger.valueOf(task.adjustedTime))
-                        .multiply(BigInteger.valueOf(task.parallel)));
-            } else {
-                totalEU_Long += task.adjustedPower * (long) task.adjustedTime * task.parallel;
-            }
+            totals.add(task.adjustedPower, task.adjustedTime, task.parallel);
         }
 
-        int weightedTime = totalWeight > 0 ? (int) Math.max(1, weightedDurationSum / totalWeight) : 1;
-
         if (wirelessMode) {
-            long requiredEUt = totalEU_BI.divide(BigInteger.valueOf(weightedTime))
-                .longValue();
-
-            long finalEUt = Math.max(1, Math.min(requiredEUt, energyEU));
-
-            int finalDuration = totalEU_BI.divide(BigInteger.valueOf(finalEUt))
-                .intValue();
-
-            if (!WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, totalEU_BI.negate())) {
-                return CheckRecipeResultRegistry.insufficientPower(totalEU_BI.longValue());
+            if (!WirelessNetworkManager.addEUToGlobalEnergyMap(
+                ownerUUID,
+                totals.energy()
+                    .negate())) {
+                return CheckRecipeResultRegistry.insufficientPower(MathUtils.toLongSafe(totals.energy()));
             }
 
-            costingEUText = NumberFormatUtil.formatNumber(totalEU_BI);
+            costingEUText = NumberFormatUtil.formatNumber(totals.energy());
 
             this.lEUt = 0;
-            this.mMaxProgresstime = Math.max(1, finalDuration);
+            this.mMaxProgresstime = totals.weightedDuration();
 
         } else {
-            long requiredEUt = totalEU_Long / Math.max(1, weightedTime);
-
-            long finalEUt = Math.max(1, Math.min(requiredEUt, energyEU));
-
-            int finalDuration = (int) Math.max(1, totalEU_Long / finalEUt);
-
-            this.lEUt = -finalEUt;
-            this.mMaxProgresstime = finalDuration;
+            GrandAssemblyLineOverclockTool.Settlement settlement = totals.settleWired(energyEU);
+            this.lEUt = -settlement.power();
+            this.mMaxProgresstime = settlement.duration();
         }
 
         mOutputItems = totalOutputs.toArray(new ItemStack[0]);
@@ -639,7 +605,7 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
 
         double currentParallel = maxParallel;
         Object2LongOpenHashMap<ItemId> requiredMap = new Object2LongOpenHashMap<>();
-        List<ItemStack> requirements = new ArrayList<>(recipe.mInputs.length);
+        List<ItemStack> requirements = new ObjectArrayList<>(recipe.mInputs.length);
 
         for (int i = 0; i < recipe.mInputs.length; i++) {
             ItemStack mainReq = recipe.mInputs[i];
@@ -898,13 +864,36 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
     }
 
     @Override
+    public List<String> getTooltipParallelControllerLines(String hatch) {
+        String unlimited = TooltipHelper.voltageTierText(UNLIMITED_ENERGY_HATCH_TIER, false);
+        String wireless = TooltipHelper.voltageTierText(WIRELESS_TIER, false);
+        double discountPerTier = 1 / GrandAssemblyLineOverclockTool.TIER_DIVISOR;
+        return Arrays.asList(
+            StatCollector.translateToLocalFormatted(PARALLEL_CONTROLLER_KEY + "energy", unlimited, hatch),
+            StatCollector.translateToLocalFormatted(
+                PARALLEL_CONTROLLER_KEY + "boost",
+                TooltipHelper.voltageTierText(GrandAssemblyLineOverclockTool.BOOST_TIER, false),
+                hatch,
+                TooltipHelper.percentageFormat.format(GrandAssemblyLineOverclockTool.BOOST_SPEED_MULTIPLIER - 1),
+                TooltipHelper.percentageFormat.format(discountPerTier),
+                TooltipHelper.percentageFormat
+                    .format(discountPerTier * GrandAssemblyLineOverclockTool.BOOST_EU_DISCOUNT_SCALE)),
+            StatCollector.translateToLocalFormatted(PARALLEL_CONTROLLER_KEY + "wireless", wireless, hatch));
+    }
+
+    @Override
+    public boolean getPerfectOC() {
+        return mParallelTier >= VoltageIndex.UIV;
+    }
+
+    @Override
     public double getEUtDiscount() {
-        return 0.8 - (mParallelTier / 50.0) * ((mParallelTier >= 12) ? 0.2 : 1);
+        return GrandAssemblyLineOverclockTool.getEUtDiscount(mParallelTier);
     }
 
     @Override
     public double getDurationModifier() {
-        return (1 / 1.67 - (Math.max(0, mParallelTier - 1) / 50.0)) * ((mParallelTier >= 12) ? 1.0 / 20.0 : 1);
+        return GrandAssemblyLineOverclockTool.getDurationModifier(mParallelTier);
     }
 
     @Override
@@ -932,31 +921,8 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.6"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.7"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.8"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addSupportAny()
-            .beginStructureBlock(48, 5, 5, true)
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.casing"), 1)
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.casing"),
-                1)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.casing"), 1)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.casing"), 1)
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.tooltip.casing"), 1)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -1012,69 +978,6 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
     }
 
     @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after GrandAssemblyLine mui2 parity is verified.
-        buildContext.addSyncedWindow(PARALLEL_WINDOW_ID, this::createParallelWindow);
-        builder.widget(new ButtonWidget().setOnClick((clickData, widget) -> {
-            if (!widget.isClient()) {
-                widget.getContext()
-                    .openSyncedWindow(PARALLEL_WINDOW_ID);
-            }
-        })
-            .setPlayClickSound(true)
-            .setBackground(() -> {
-                List<UITexture> ret = new ObjectArrayList<>();
-                ret.add(GTUITextures.BUTTON_STANDARD);
-                ret.add(GTUITextures.OVERLAY_BUTTON_BATCH_MODE_ON);
-                return ret.toArray(new IDrawable[0]);
-            })
-            .addTooltip(StatCollector.translateToLocal("gtnl.machine.grand_assembly_line.info.minimum_recipe_time"))
-            .setTooltipShowUpDelay(BaseTileEntity.TOOLTIP_DELAY)
-            .setPos(174, 112)
-            .setSize(16, 16));
-        super.addUIWidgets(builder, buildContext);
-    }
-
-    @Deprecated
-    public ModularWindow createParallelWindow(final EntityPlayer player) {
-        // TODO: Remove this mui1 fallback after GrandAssemblyLine mui2 parity is verified.
-        final int WIDTH = 158;
-        final int HEIGHT = 52;
-        final int PARENT_WIDTH = getGUIWidth();
-        final int PARENT_HEIGHT = getGUIHeight();
-        ModularWindow.Builder builder = ModularWindow.builder(WIDTH, HEIGHT);
-        builder.setBackground(GTUITextures.BACKGROUND_SINGLEBLOCK_DEFAULT);
-        builder.setGuiTint(getGUIColorization());
-        builder.setDraggable(true);
-        builder.setPos(
-            (size, window) -> Alignment.Center.getAlignedPos(size, new Size(PARENT_WIDTH, PARENT_HEIGHT))
-                .add(
-                    Alignment.BottomRight.getAlignedPos(new Size(PARENT_WIDTH, PARENT_HEIGHT), new Size(WIDTH, HEIGHT))
-                        .add(WIDTH - 3, 0)
-                        .subtract(0, 10)));
-        builder.widget(
-            TextWidget.localised("gtnl.machine.grand_assembly_line.info.minimum_recipe_time")
-                .setPos(3, 4)
-                .setSize(150, 20))
-            .widget(
-                new NumericWidget().setSetter(val -> minRecipeTime = (int) val)
-                    .setGetter(() -> minRecipeTime)
-                    .setBounds(50, Integer.MAX_VALUE)
-                    .setDefaultValue(1)
-                    .setScrollValues(1, 4, 64)
-                    .setTextAlignment(Alignment.Center)
-                    .setTextColor(Color.WHITE.normal)
-                    .setSize(150, 18)
-                    .setPos(4, 25)
-                    .setBackground(GTUITextures.BACKGROUND_TEXT_FIELD)
-                    .attachSyncer(
-                        new FakeSyncWidget.IntegerSyncer(() -> minRecipeTime, (val) -> minRecipeTime = val),
-                        builder));
-        return builder.build();
-    }
-
-    @Override
     public void saveNBTData(NBTTagCompound aNBT) {
         super.saveNBTData(aNBT);
         aNBT.setBoolean("wirelessMode", wirelessMode);
@@ -1125,6 +1028,18 @@ public class GrandAssemblyLine extends GTMMultiMachineBase<GrandAssemblyLine> im
     public enum DataHatchElement implements IHatchElement<GrandAssemblyLine> {
 
         DataAccess;
+
+        public static final String NAME_KEY = "gt.blockmachines.hatch.dataaccess.name";
+
+        @Override
+        public String getDescriptionLangKey() {
+            return NAME_KEY;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return StatCollector.translateToLocal(NAME_KEY);
+        }
 
         @Override
         public List<? extends Class<? extends IMetaTileEntity>> mteClasses() {

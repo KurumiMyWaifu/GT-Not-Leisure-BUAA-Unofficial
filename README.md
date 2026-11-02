@@ -20,8 +20,8 @@
     <a href="https://github.com/ABKQPO/GT-Not-Leisure/releases/latest">
       <img src="https://img.shields.io/github/v/release/ABKQPO/GT-Not-Leisure?style=for-the-badge&color=orange" alt="Latest Version">
     </a>
-    <a href="https://www.gnu.org/licenses/lgpl-3.0.html">
-      <img src="https://img.shields.io/badge/License-LGPLv3-blue?style=for-the-badge" alt="License">
+    <a href="https://www.gnu.org/licenses/gpl-3.0.html">
+      <img src="https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge" alt="License">
     </a>
     <br>
     <a href="https://discord.gg/3sADCeCsjA">
@@ -43,6 +43,7 @@
 
 ## 📑 Table of Contents
 - [📑 Table of Contents](#-table-of-contents)
+- [🔧 Required Dependencies](#-required-dependencies)
 - [✨ Key Mechanics](#-key-mechanics)
 - [🏭 Machinery Showcase](#-machinery-showcase)
 - [🧙‍♂️ Magic \& Cross-Mod Integration](#️-magic--cross-mod-integration)
@@ -56,6 +57,11 @@
 - [📜 Credits \& Attributions](#-credits--attributions)
 
 <hr>
+
+## 🔧 Required Dependencies
+
+*   [GTNLLib (>= 1.1.3)](https://github.com/GTNotLeisure/GTNLLib)
+*   [BetterQuestingAPI (>= 1.1.3)](https://github.com/GTNotLeisure/BetterQuestingAPI)
 
 ## ✨ Key Mechanics
 
@@ -190,12 +196,16 @@ Without both of the above quest mods, GTNL quests will not be injected.
 
 ## ⚠️ Installation & Update Instructions
 
+This branch builds two mods. Install the release jars for both GTNL (`sciencenotleisure-*.jar`)
+and [GTNLLib](gtnllib/README.md) (`gtnllib-*.jar`) from the same build in your mods folder.
+The `-dev`, `-sources` and `-predowngrade` jars are for development, not installation.
+
 > **IMPORTANT:** When updating `GT-Not-Leisure`, you **must** reset the configuration to prevent recipe conflicts.
 
 1.  **Backup** your save/instance.
 2.  Delete the old `.jar` from your mods folder.
 3.  **Delete/Reset** the GT language file: `GregTech.lang` (The mod injects new entries here).
-4.  **Delete/Reset** the config file: `config/GTNotLeisure/GTNotLeisure.cfg` (older packs may still use `main.cfg`).
+4.  **Delete/Reset** the config files in `config/GTNotLeisure/`: `general.cfg`, `item.cfg`, `machine.cfg`, `recipe.cfg` and `re_avaritia.cfg`. `client.cfg` only holds client display, sound and window settings and can be kept (older packs may still use `GTNotLeisure.cfg` or `main.cfg`).
 
 <hr>
 
@@ -217,6 +227,8 @@ We gratefully acknowledge the use of code and assets from the open-source commun
 | **NAE2**                     | [Neeve](https://github.com/AE2-UEL/NAE2)                         | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.html)                  |
 | **CosmicCore**               | [Ghostipedia](https://github.com/Frontiers-PackForge/CosmicCore) | [LGPLv3](https://www.gnu.org/licenses/lgpl-3.0.html)                  |
 | **MEGACells Textures**       | [62832](https://github.com/62832/MEGACells)                      | [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) |
+| **AE2 Lightning Tech Assets** | [MOAKIEE, TedXenon, et al.](https://github.com/AE2-Lightning-Tech-Reborn/AE2-Lightning-Tech-Reborn) | [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/) |
+| **AE2 Lightning Tech Railgun Code** | [MOAKIEE, TedXenon, et al.](https://github.com/AE2-Lightning-Tech-Reborn/AE2-Lightning-Tech-Reborn/tree/95801cf1b4bd) | [LGPL-3.0](https://www.gnu.org/licenses/lgpl-3.0.html) |
 
 Thanks to the following developers for their contributions to GT-Not-Leisure:
 

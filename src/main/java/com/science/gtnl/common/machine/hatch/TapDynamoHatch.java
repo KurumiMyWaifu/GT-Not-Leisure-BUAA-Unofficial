@@ -1,5 +1,7 @@
 package com.science.gtnl.common.machine.hatch;
 
+import java.util.Locale;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
@@ -9,27 +11,42 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchDynamo;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class TapDynamoHatch extends MTEHatchDynamo {
 
     public int clickCount = 0;
     public long lastClickTime = 0;
 
     public TapDynamoHatch(int aID, String aName, String aNameRegional, int aTier) {
-        super(
-            aID,
-            aName,
-            aNameRegional,
-            aTier,
-            new String[] { StatCollector.translateToLocal("gtnl.hatch.tap_dynamo.tooltip.0"),
-                StatCollector.translateToLocal("gtnl.hatch.tap_dynamo.tooltip.1") });
+        super(aID, aName, aNameRegional, aTier);
     }
 
     public TapDynamoHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.tap_dynamo." + GTValues.VN[mTier].toLowerCase(Locale.ROOT) + ".name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
+    }
+
+    @Override
+    public String[] getDescription() {
+        return new String[] { StatCollector.translateToLocal("gtnl.hatch.tap_dynamo.tooltip.0"),
+            StatCollector.translateToLocal("gtnl.hatch.tap_dynamo.tooltip.1") };
     }
 
     @Override

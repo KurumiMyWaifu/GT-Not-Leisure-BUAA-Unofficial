@@ -1,75 +1,73 @@
 package com.science.gtnl.common.item.items;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
+import java.util.Set;
 
 import net.minecraft.block.Block;
-import net.minecraft.client.Minecraft;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.ChatStyle;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IChatComponent;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.util.EnumHelper;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.oredict.OreDictionary;
 
-import com.github.bsideup.jabel.Desugar;
+import com.cleanroommc.modularui.api.IGuiHolder;
+import com.cleanroommc.modularui.factory.PlayerInventoryGuiData;
+import com.cleanroommc.modularui.screen.ModularPanel;
+import com.cleanroommc.modularui.screen.ModularScreen;
+import com.cleanroommc.modularui.screen.UISettings;
+import com.cleanroommc.modularui.value.sync.PanelSyncManager;
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.reavaritia.utils.item.ItemStackWrapper;
 import com.reavaritia.utils.item.SubtitleDisplay;
 import com.reavaritia.utils.item.ToolHelper;
-import com.science.gtnl.ScienceNotLeisure;
-import com.science.gtnl.client.GTNLCreativeTabs;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.common.gui.VeinMiningPickaxeGui;
+import com.science.gtnl.config.ItemConfig;
 import com.science.gtnl.loader.ItemLoader;
-import com.science.gtnl.utils.enums.GTNLItemList;
+import com.science.gtnl.utils.ClientUtils;
 import com.science.gtnl.utils.item.ItemUtils;
 
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.items.MetaGeneratedTool;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
+import gregtech.api.modularui2.GTGuiThemes;
+import gregtech.api.modularui2.GTModularScreen;
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 
-public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
+@EventBusSubscriber(phase = Phase.PRE)
+public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay, IGuiHolder<PlayerInventoryGuiData> {
 
     public boolean isEnable;
-    private final List<ItemStack> capturedHarvestDrops = new ArrayList<>();
+    private final List<ItemStack> capturedHarvestDrops = new ObjectArrayList<>();
     private int harvestingX;
     private int harvestingY;
     private int harvestingZ;
 
     public VeinMiningPickaxe() {
         super(EnumHelper.addToolMaterial("VEIN", 15, 20000000, 15, 3, 10));
-        this.setUnlocalizedName("gtnl.vein_mining_pickaxe");
-        this.setCreativeTab(GTNLCreativeTabs.GTNotLeisureItem);
-        this.setTextureName(ScienceNotLeisure.RESOURCE_ROOT_ID + ":" + "vein_mining_pickaxe");
         this.setMaxStackSize(1);
         this.setMaxDamage(20000000);
-        MinecraftForge.EVENT_BUS.register(this);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(this);
-        GameRegistry.registerItem(this, "vein_mining_pickaxe");
-        GTNLItemList.VeinMiningPickaxe.set(new ItemStack(this, 1));
     }
 
     @Override
@@ -84,22 +82,30 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
         NBTTagCompound tags = itemStack.getTagCompound();
         int range = 3;
         int amount = 32767;
+        boolean chainEnabled = true;
         boolean preciseMode = false;
 
         if (tags != null) {
             if (tags.hasKey("range")) {
-                range = Math.max(0, Math.min(MainConfig.item.vein_miner_pickaxe.maxRange, tags.getInteger("range")));
+                range = Math.max(0, Math.min(ItemConfig.vein_miner_pickaxe.maxRange, tags.getInteger("range")));
             }
             if (tags.hasKey("amount")) {
-                amount = Math.max(0, Math.min(MainConfig.item.vein_miner_pickaxe.maxAmount, tags.getInteger("amount")));
+                amount = Math.max(0, Math.min(ItemConfig.vein_miner_pickaxe.maxAmount, tags.getInteger("amount")));
             }
             if (tags.hasKey("preciseMode")) {
                 preciseMode = tags.getBoolean("preciseMode");
+            }
+            if (tags.hasKey("chainEnabled")) {
+                chainEnabled = tags.getBoolean("chainEnabled");
             }
         }
 
         toolTip.add(StatCollector.translateToLocalFormatted("item.gtnl.vein_mining_pickaxe.max_block_gap", range));
         toolTip.add(StatCollector.translateToLocalFormatted("item.gtnl.vein_mining_pickaxe.max_vein_count", amount));
+        toolTip.add(
+            StatCollector.translateToLocal(
+                chainEnabled ? "item.gtnl.vein_mining_pickaxe.chain.enabled"
+                    : "item.gtnl.vein_mining_pickaxe.chain.disabled"));
         toolTip.add(
             StatCollector.translateToLocal(
                 preciseMode ? "item.gtnl.vein_mining_pickaxe.precise_mode.enabled"
@@ -111,6 +117,19 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
     public boolean hasEffect(ItemStack stack, int pass) {
         NBTTagCompound nbt = stack.getTagCompound();
         return nbt != null && nbt.getBoolean("preciseMode");
+    }
+
+    @Override
+    public ItemStack onItemRightClick(ItemStack stack, World world, EntityPlayer player) {
+        boolean enabled = !isChainEnabled(stack);
+        setChainEnabled(stack, enabled);
+        if (world.isRemote) {
+            player.swingItem();
+            showSubtitle(
+                enabled ? "item.gtnl.vein_mining_pickaxe.chain.enabled"
+                    : "item.gtnl.vein_mining_pickaxe.chain.disabled");
+        }
+        return stack;
     }
 
     @Override
@@ -152,30 +171,69 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
     }
 
     @Override
-    public ItemStack onItemRightClick(ItemStack stack, World world, EntityPlayer player) {
-        if (player.isSneaking()) {
-            NBTTagCompound tags = stack.getTagCompound();
-            if (tags == null) {
-                tags = new NBTTagCompound();
-                stack.setTagCompound(tags);
-            }
+    @SideOnly(Side.CLIENT)
+    public ModularScreen createScreen(PlayerInventoryGuiData data, ModularPanel mainPanel) {
+        return new GTModularScreen(mainPanel, GTGuiThemes.STANDARD);
+    }
 
-            boolean isPreciseMode = !tags.getBoolean("preciseMode");
-            tags.setBoolean("preciseMode", isPreciseMode);
-            player.swingItem();
+    @Override
+    public ModularPanel buildUI(PlayerInventoryGuiData data, PanelSyncManager syncManager, UISettings settings) {
+        return new VeinMiningPickaxeGui(data, syncManager).build();
+    }
 
-            if (world.isRemote) {
-                String key = isPreciseMode
-                    ? StatCollector.translateToLocal("item.gtnl.vein_mining_pickaxe.precise_mode.enabled")
-                    : StatCollector.translateToLocal("item.gtnl.vein_mining_pickaxe.precise_mode.disabled");
-                showSubtitle(key);
-            }
+    public static int getRange(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        return tag != null && tag.hasKey("range") ? tag.getInteger("range") : 3;
+    }
+
+    public static int getAmount(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        return tag != null && tag.hasKey("amount") ? tag.getInteger("amount") : 32767;
+    }
+
+    public static boolean isPreciseMode(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        return tag != null && tag.getBoolean("preciseMode");
+    }
+
+    public static boolean isChainEnabled(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        return tag == null || !tag.hasKey("chainEnabled") || tag.getBoolean("chainEnabled");
+    }
+
+    public static void setRange(ItemStack stack, int range) {
+        getOrCreateTag(stack)
+            .setInteger("range", Math.max(-1, Math.min(range, Math.max(-1, ItemConfig.vein_miner_pickaxe.maxRange))));
+    }
+
+    public static void setAmount(ItemStack stack, int amount) {
+        getOrCreateTag(stack)
+            .setInteger("amount", Math.max(0, Math.min(amount, Math.max(0, ItemConfig.vein_miner_pickaxe.maxAmount))));
+    }
+
+    public static void setPreciseMode(ItemStack stack, boolean preciseMode) {
+        getOrCreateTag(stack).setBoolean("preciseMode", preciseMode);
+    }
+
+    public static void setChainEnabled(ItemStack stack, boolean enabled) {
+        getOrCreateTag(stack).setBoolean("chainEnabled", enabled);
+    }
+
+    private static NBTTagCompound getOrCreateTag(ItemStack stack) {
+        NBTTagCompound tag = stack.getTagCompound();
+        if (tag == null) {
+            tag = new NBTTagCompound();
+            stack.setTagCompound(tag);
         }
-        return stack;
+        return tag;
     }
 
     @SubscribeEvent
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
+        ItemLoader.veinMiningPickaxe.chainBreak(event);
+    }
+
+    public void chainBreak(BlockEvent.BreakEvent event) {
         EntityPlayer player = event.getPlayer();
         World world = player.worldObj;
         if (world.isRemote || !(player instanceof EntityPlayerMP playerMP)) return;
@@ -191,16 +249,15 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
 
             NBTTagCompound tags = stack.getTagCompound();
             if (tags != null) {
+                if (!isChainEnabled(stack)) return;
                 if (tags.hasKey("range")) {
-                    range = Math
-                        .max(-1, Math.min(MainConfig.item.vein_miner_pickaxe.maxRange, tags.getInteger("range")));
+                    range = Math.max(-1, Math.min(ItemConfig.vein_miner_pickaxe.maxRange, tags.getInteger("range")));
                 }
                 if (tags.hasKey("preciseMode")) {
                     preciseMode = tags.getBoolean("preciseMode");
                 }
                 if (tags.hasKey("amount")) {
-                    amount = Math
-                        .max(0, Math.min(MainConfig.item.vein_miner_pickaxe.maxAmount, tags.getInteger("amount")));
+                    amount = Math.max(0, Math.min(ItemConfig.vein_miner_pickaxe.maxAmount, tags.getInteger("amount")));
                 }
             }
 
@@ -231,66 +288,77 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
             && player.getFoodStats()
                 .getSaturationLevel() <= 0f
             && !player.capabilities.isCreativeMode) {
+            isEnable = false;
             return;
         }
         World world = player.worldObj;
-        Queue<Node> queue = new ArrayDeque<>();
-        LongSet visited = new LongOpenHashSet();
+        LongArrayFIFOQueue positionQueue = new LongArrayFIFOQueue(256);
+        IntArrayFIFOQueue gapQueue = new IntArrayFIFOQueue(256);
+        Long2IntOpenHashMap queuedGap = new Long2IntOpenHashMap(256);
+        queuedGap.defaultReturnValue(Integer.MAX_VALUE);
         int cleared = 0;
         int blocksSinceHunger = 0;
         int toolMaxDamage = Math.toIntExact(MetaGeneratedTool.getToolMaxDamage(stack));
+        boolean silkTouch = EnchantmentHelper.getSilkTouchModifier(player);
+        int fortune = EnchantmentHelper.getFortuneModifier(player);
         Object2IntOpenHashMap<ItemStackWrapper> mergedDrops = new Object2IntOpenHashMap<>();
+        Set<String> targetOreNames = collectOreNames(targetBlock, targetMeta);
+        Reference2ReferenceOpenHashMap<Block, Int2BooleanOpenHashMap> oreMatches = new Reference2ReferenceOpenHashMap<>();
+        int cachedChunkX = Integer.MIN_VALUE;
+        int cachedChunkZ = Integer.MIN_VALUE;
+        int cachedSectionY = Integer.MIN_VALUE;
+        Chunk cachedChunk = null;
+        ExtendedBlockStorage cachedStorage = null;
 
-        queue.add(new Node(x, y, z, 0));
+        long origin = encodePosition(x, y, z);
+        positionQueue.enqueue(origin);
+        gapQueue.enqueue(0);
+        queuedGap.put(origin, 0);
 
-        while (!queue.isEmpty() && cleared < amount) {
+        while (positionQueue.size() > 0 && cleared < amount) {
             if (!player.isSneaking()) {
                 isEnable = false;
                 break;
             }
 
-            Node node = queue.poll();
-            int px = node.x, py = node.y, pz = node.z;
-            int gap = node.gap;
+            long position = positionQueue.dequeueLong();
+            int px = decodeX(position);
+            int py = decodeY(position);
+            int pz = decodeZ(position);
+            int gap = gapQueue.dequeueInt();
 
-            long key = (((long) px) & 0x3FFFFFF) << 38 | (((long) py) & 0xFFF) << 26 | (((long) pz) & 0x3FFFFFF);
-            if (!visited.add(key)) continue;
+            if (queuedGap.get(position) != gap) continue;
+            queuedGap.put(position, -1);
             if (!world.blockExists(px, py, pz)) continue;
 
-            Block block = world.getBlock(px, py, pz);
-            TileEntity tileEntity = world.getTileEntity(px, py, pz);
-            int meta = world.getBlockMetadata(px, py, pz);
+            int chunkX = px >> 4;
+            int chunkZ = pz >> 4;
+            int sectionY = py >> 4;
+            if (chunkX != cachedChunkX || chunkZ != cachedChunkZ) {
+                cachedChunk = world.getChunkFromChunkCoords(chunkX, chunkZ);
+                cachedChunkX = chunkX;
+                cachedChunkZ = chunkZ;
+                cachedSectionY = Integer.MIN_VALUE;
+            }
+            if (sectionY != cachedSectionY) {
+                ExtendedBlockStorage[] storage = cachedChunk.getBlockStorageArray();
+                cachedStorage = sectionY >= 0 && sectionY < storage.length ? storage[sectionY] : null;
+                cachedSectionY = sectionY;
+            }
+
+            Block block = cachedStorage == null ? Blocks.air : cachedStorage.getBlockByExtId(px & 15, py & 15, pz & 15);
+            int meta = cachedStorage == null ? 0 : cachedStorage.getExtBlockMetadata(px & 15, py & 15, pz & 15);
+            TileEntity tileEntity = block.hasTileEntity(meta) ? world.getTileEntity(px, py, pz) : null;
 
             boolean matches = false;
-            if (block.getBlockHardness(world, x, y, z) >= 0) {
+            if (block != Blocks.air && block.getBlockHardness(world, px, py, pz) >= 0) {
                 if (tileEntity instanceof IGregTechTileEntity gtTE) {
                     meta = gtTE.getMetaTileID();
                 }
                 if (block == targetBlock && (!preciseMode || meta == targetMeta)) {
                     matches = true;
                 } else {
-                    ItemStack stackAt = new ItemStack(block, 1, meta);
-                    int[] oreIds = OreDictionary.getOreIDs(stackAt);
-                    for (int id : oreIds) {
-                        String name = OreDictionary.getOreName(id);
-                        int[] targetIds = OreDictionary.getOreIDs(new ItemStack(targetBlock, 1, targetMeta));
-                        for (int tid : targetIds) {
-                            String tname = OreDictionary.getOreName(tid);
-                            if (preciseMode) {
-                                if (tname.equals(name)) {
-                                    matches = true;
-                                    break;
-                                }
-                            } else {
-                                if ((name.startsWith("ore") && tname.startsWith("ore")) || tname.startsWith(name)) {
-                                    matches = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (matches) break;
-                    }
+                    matches = matchesOreDictionary(block, meta, targetOreNames, preciseMode, oreMatches);
                 }
             }
 
@@ -303,13 +371,13 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
                     py,
                     pz,
                     block,
-                    EnchantmentHelper.getSilkTouchModifier(player),
-                    EnchantmentHelper.getFortuneModifier(player));
+                    silkTouch,
+                    fortune);
                 if (!player.capabilities.isCreativeMode) {
                     for (ItemStack drop : drops) {
                         if (drop == null) continue;
                         ItemStackWrapper dropKey = new ItemStackWrapper(drop);
-                        mergedDrops.put(dropKey, mergedDrops.getInt(dropKey) + drop.stackSize);
+                        mergedDrops.addTo(dropKey, drop.stackSize);
                     }
                 }
 
@@ -341,15 +409,12 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
                 gap++;
             }
 
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) == 1) {
-                            queue.add(new Node(px + dx, py + dy, pz + dz, gap));
-                        }
-                    }
-                }
-            }
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px + 1, py, pz, gap);
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px - 1, py, pz, gap);
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px, py + 1, pz, gap);
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px, py - 1, pz, gap);
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px, py, pz + 1, gap);
+            enqueuePosition(positionQueue, gapQueue, queuedGap, px, py, pz - 1, gap);
         }
 
         if (blocksSinceHunger > 0) {
@@ -363,9 +428,75 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
         isEnable = false;
     }
 
+    private static long encodePosition(int x, int y, int z) {
+        return (((long) x) & 0x3FFFFFFL) << 38 | (((long) y) & 0xFFFL) << 26 | (((long) z) & 0x3FFFFFFL);
+    }
+
+    private static void enqueuePosition(LongArrayFIFOQueue positions, IntArrayFIFOQueue gaps,
+        Long2IntOpenHashMap queuedGap, int x, int y, int z, int gap) {
+        if (y < 0 || y >= 256) return;
+        long position = encodePosition(x, y, z);
+        int previousGap = queuedGap.get(position);
+        if (previousGap == -1 || gap >= previousGap) return;
+        queuedGap.put(position, gap);
+        positions.enqueue(position);
+        gaps.enqueue(gap);
+    }
+
+    private static int decodeX(long position) {
+        return ((int) (position >> 38) << 6) >> 6;
+    }
+
+    private static int decodeY(long position) {
+        return (int) (position >> 26) & 0xFFF;
+    }
+
+    private static int decodeZ(long position) {
+        return (int) (position << 38 >> 38);
+    }
+
+    private static Set<String> collectOreNames(Block block, int meta) {
+        Set<String> names = new ObjectOpenHashSet<>();
+        for (int id : OreDictionary.getOreIDs(new ItemStack(block, 1, meta))) {
+            names.add(OreDictionary.getOreName(id));
+        }
+        return names;
+    }
+
+    private static boolean matchesOreDictionary(Block block, int meta, Set<String> targetNames, boolean preciseMode,
+        Reference2ReferenceOpenHashMap<Block, Int2BooleanOpenHashMap> cache) {
+        if (targetNames.isEmpty()) return false;
+        Int2BooleanOpenHashMap blockMatches = cache.get(block);
+        if (blockMatches == null) {
+            blockMatches = new Int2BooleanOpenHashMap();
+            cache.put(block, blockMatches);
+        }
+        if (blockMatches.containsKey(meta)) return blockMatches.get(meta);
+        boolean matches = false;
+        for (int id : OreDictionary.getOreIDs(new ItemStack(block, 1, meta))) {
+            String candidateName = OreDictionary.getOreName(id);
+            if (preciseMode && targetNames.contains(candidateName)) {
+                matches = true;
+                break;
+            }
+            if (!preciseMode) {
+                for (String targetName : targetNames) {
+                    if ((candidateName.startsWith("ore") && targetName.startsWith("ore"))
+                        || targetName.startsWith(candidateName)) {
+                        matches = true;
+                        break;
+                    }
+                }
+            }
+            if (matches) break;
+        }
+        blockMatches.put(meta, matches);
+        return matches;
+    }
+
     public List<ItemStack> removeBlockAndGetDrops(EntityPlayerMP player, ItemStack stack, World world, int x, int y,
         int z, Block block, boolean silk, int fortune) {
-        List<ItemStack> drops = new ArrayList<>();
+        List<ItemStack> drops = new ObjectArrayList<>();
         if (!world.blockExists(x, y, z)) return drops;
 
         Block blk = world.getBlock(x, y, z);
@@ -400,7 +531,7 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
     }
 
     private List<ItemStack> copyDrops(List<ItemStack> drops) {
-        List<ItemStack> copiedDrops = new ArrayList<>();
+        List<ItemStack> copiedDrops = new ObjectArrayList<>();
         for (ItemStack drop : drops) {
             if (drop != null && drop.stackSize > 0) {
                 copiedDrops.add(drop.copy());
@@ -414,7 +545,7 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
     }
 
     @SubscribeEvent
-    public void onHarvestDrops(BlockEvent.HarvestDropsEvent event) {
+    public static void onHarvestDrops(BlockEvent.HarvestDropsEvent event) {
         if (event.harvester == null || event.harvester.getCurrentEquippedItem() == null) return;
         ItemStack heldItem = event.harvester.getCurrentEquippedItem();
         if (!(heldItem.getItem() instanceof VeinMiningPickaxe veinMiningPickaxe)) return;
@@ -431,22 +562,15 @@ public class VeinMiningPickaxe extends ItemPickaxe implements SubtitleDisplay {
         return harvestingX == x && harvestingY == y && harvestingZ == z;
     }
 
-    @Desugar
-    private record Node(int x, int y, int z, int gap) {}
-
     @SideOnly(Side.CLIENT)
     @Override
     public void showSubtitle(String messageKey) {
-        IChatComponent component = new ChatComponentTranslation(messageKey);
-        component.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.WHITE));
-        Minecraft.getMinecraft().ingameGUI.func_110326_a(component.getFormattedText(), true);
+        ClientUtils.showSubtitle(messageKey);
     }
 
     @SideOnly(Side.CLIENT)
     @Override
     public void showSubtitle(String messageKey, int range) {
-        IChatComponent component = new ChatComponentTranslation(messageKey, range);
-        component.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.WHITE));
-        Minecraft.getMinecraft().ingameGUI.func_110326_a(component.getFormattedText(), true);
+        ClientUtils.showSubtitle(messageKey, range);
     }
 }

@@ -5,6 +5,7 @@ import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -19,9 +20,9 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 import com.gtnewhorizon.structurelib.alignment.constructable.IConstructable;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
@@ -31,6 +32,7 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.common.render.tile.AdvancedHyperNaquadahReactorRenderer;
 import com.science.gtnl.utils.StructureUtils;
@@ -49,7 +51,6 @@ import gregtech.api.enums.Materials;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
-import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.GregTechTileClientEvents;
@@ -73,6 +74,9 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
     implements IConstructable, ISurvivalConstructable {
 
     public boolean useExtraGas = false;
+    public UUID ownerUUID;
+    public BigInteger bigEUt;
+    public boolean wirelessMode;
 
     public NaquadahReactor(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -102,6 +106,8 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
 
     public abstract int getCasingTextureID();
 
+    public abstract boolean isWirelessMode();
+
     @Override
     public RecipeMap<?> getRecipeMap() {
         return GTNLRecipeMaps.NaquadahReactorRecipes;
@@ -113,8 +119,9 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
 
             @Override
             public @NotNull CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
-                int recipeReq = recipe.getMetadataOrDefault(NaquadahReactorMetadata.INSTANCE, Pair.of(0, 0L))
-                    .getKey();
+                int recipeReq = recipe
+                    .getMetadataOrDefault(NaquadahReactorMetadata.INSTANCE, NaquadahReactorMetadata.NONE)
+                    .leftInt();
                 if (recipeReq > getReactorTier()) {
                     return CheckRecipeResultRegistry.insufficientMachineTier(recipeReq);
                 }
@@ -135,6 +142,24 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
     public abstract int getEUtMultiple();
 
     public abstract FluidStack getExtraGas();
+
+    @Override
+    public TooltipStats getTooltipStats() {
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> getTooltipVars() {
+        return ImmutableMap.of(
+            "parallels",
+            getMaxParallelRecipes(),
+            "duration_multiple",
+            getDurationMultiple(),
+            "eut_multiple",
+            getEUtMultiple(),
+            "extra_gas",
+            getExtraGas().amount);
+    }
 
     public boolean hasExtraGasInput() {
         FluidStack extraGas = getExtraGas();
@@ -159,6 +184,7 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
     @NotNull
     @Override
     public CheckRecipeResult checkProcessing() {
+        bigEUt = null;
         useExtraGas = hasExtraGasInput();
 
         setupProcessingLogic(processingLogic);
@@ -173,18 +199,49 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         mEfficiencyIncrease = 10000;
         mMaxProgresstime = (int) (processingLogic.getDuration() * mConfigSpeedBoost);
         lEUt = ((GTNLProcessingLogic) processingLogic).getLastRecipe()
-            .getMetadataOrDefault(NaquadahReactorMetadata.INSTANCE, Pair.of(0, 0L))
-            .getValue() * processingLogic.getCurrentParallels();
+            .getMetadataOrDefault(NaquadahReactorMetadata.INSTANCE, NaquadahReactorMetadata.NONE)
+            .rightLong() * processingLogic.getCurrentParallels();
 
         if (useExtraGas) {
             mMaxProgresstime /= getDurationMultiple();
-            lEUt *= getEUtMultiple();
+
+            long mult = getEUtMultiple();
+
+            if (lEUt > Long.MAX_VALUE / mult / 100) {
+                bigEUt = BigInteger.valueOf(lEUt)
+                    .multiply(BigInteger.valueOf(mult))
+                    .multiply(BigInteger.valueOf(mMaxProgresstime));
+                lEUt = 0;
+                wirelessMode = true;
+            } else {
+                lEUt *= mult;
+            }
+        }
+
+        if (wirelessMode && bigEUt == null) {
+            bigEUt = BigInteger.valueOf(lEUt)
+                .multiply(BigInteger.valueOf(mMaxProgresstime));
+            lEUt = 0;
         }
 
         mOutputItems = processingLogic.getOutputItems();
         mOutputFluids = processingLogic.getOutputFluids();
 
         return result;
+    }
+
+    @Override
+    public void outputAfterRecipe() {
+        super.outputAfterRecipe();
+        if (bigEUt == null) return;
+        WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, bigEUt);
+        bigEUt = null;
+    }
+
+    @Override
+    public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
+        super.onFirstTick(aBaseMetaTileEntity);
+        if (isWirelessMode()) this.ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
     }
 
     @Override
@@ -213,16 +270,31 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         super.getWailaBody(itemStack, currentTip, accessor, config);
         final NBTTagCompound tag = accessor.getNBTData();
 
-        if (tag.hasKey("mEUt")) {
+        if (tag.getBoolean("useExtraGas")) {
+            currentTip.add(StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.extra_gas_boost"));
+        }
+
+        if (tag.getBoolean("wirelessMode")) {
+            currentTip
+                .add(EnumChatFormatting.LIGHT_PURPLE + StatCollector.translateToLocal("gtnl.waila.wireless.mode"));
+        }
+
+        if (tag.hasKey("bigEUt")) {
+            try {
+                BigInteger big = new BigInteger(tag.getString("bigEUt"));
+                currentTip.add(
+                    StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.wireless_power_output")
+                        + EnumChatFormatting.WHITE
+                        + NumberFormatUtil.formatNumber(big)
+                        + " EU"
+                        + EnumChatFormatting.RESET);
+            } catch (NumberFormatException ignored) {}
+        } else if (tag.hasKey("mEUt")) {
             currentTip.add(
                 StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.power_output") + EnumChatFormatting.WHITE
                     + NumberFormatUtil.formatNumber(tag.getLong("mEUt"))
                     + " EU/t"
                     + EnumChatFormatting.RESET);
-        }
-
-        if (tag.getBoolean("useExtraGas")) {
-            currentTip.add(StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.extra_gas_boost"));
         }
     }
 
@@ -234,17 +306,36 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         if (tileEntity == null) return;
         if (tileEntity.isActive()) return;
         tag.setBoolean("useExtraGas", useExtraGas);
-        tag.setLong("mEUt", Math.abs(lEUt));
+        if (bigEUt != null) {
+            tag.setString(
+                "bigEUt",
+                bigEUt.abs()
+                    .toString());
+        } else {
+            tag.setLong("mEUt", Math.abs(lEUt));
+        }
+        tag.setBoolean("wirelessMode", wirelessMode);
     }
 
     @Override
     public String[] getInfoData() {
         String[] info = super.getInfoData();
-        info[4] = IGregTechDeviceInformation.encode(
-            "NaquadahReactor.Generates.fmt",
-            EnumChatFormatting.RED,
-            NumberFormatUtil.formatNumber(Math.abs(this.lEUt)),
-            EnumChatFormatting.RESET);
+        String labelKey;
+        String euText;
+        String unit;
+        if (bigEUt != null) {
+            labelKey = "gtnl.waila.naquadah_reactor.wireless_power_output";
+            euText = NumberFormatUtil.formatNumber(bigEUt.abs());
+            unit = " EU";
+        } else {
+            labelKey = "gtnl.waila.naquadah_reactor.power_output";
+            euText = NumberFormatUtil.formatNumber(Math.abs(this.lEUt));
+            unit = " EU/t";
+        }
+        info[4] = StatCollector.translateToLocal(labelKey) + EnumChatFormatting.RED
+            + euText
+            + EnumChatFormatting.RESET
+            + unit;
         return info;
     }
 
@@ -252,14 +343,23 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
     public void saveNBTData(NBTTagCompound aNBT) {
         super.saveNBTData(aNBT);
         aNBT.setBoolean("useExtraGas", useExtraGas);
+        aNBT.setBoolean("wirelessMode", wirelessMode);
+        if (bigEUt != null) {
+            aNBT.setString("bigEUt", bigEUt.toString());
+        }
     }
 
     @Override
     public void loadNBTData(NBTTagCompound aNBT) {
         super.loadNBTData(aNBT);
         useExtraGas = aNBT.getBoolean("useExtraGas");
+        wirelessMode = aNBT.getBoolean("wirelessMode");
+        if (aNBT.hasKey("bigEUt")) {
+            bigEUt = new BigInteger(aNBT.getString("bigEUt"));
+        }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class LargeNaquadahReactor extends NaquadahReactor<LargeNaquadahReactor> {
 
         private static final String STRUCTURE_PIECE_MAIN = "main";
@@ -321,38 +421,8 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
 
         @Override
         public MultiblockTooltipBuilder createTooltip() {
-            MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-            tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.recipe_type"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.large_naquadah_reactor.tooltip.0",
-                        getMaxParallelRecipes()))
-                .addInfo(StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.1"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.large_naquadah_reactor.tooltip.2",
-                        getDurationMultiple(),
-                        getEUtMultiple()))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.large_naquadah_reactor.tooltip.3",
-                        getExtraGas().amount))
-                .beginStructureBlock(25, 25, 9, true)
-                .addInputHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.casing"))
-                .addOutputHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.casing"))
-                .addEnergyHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.casing"))
-                .addDynamoHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.casing"))
-                .addMaintenanceHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.large_naquadah_reactor.tooltip.casing"))
+            GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+            tt.addAutoTooltip(this)
                 .toolTipFinisher();
             return tt;
         }
@@ -380,6 +450,11 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         @Override
         public FluidStack getExtraGas() {
             return Materials.Oxygen.getGas(2500);
+        }
+
+        @Override
+        public boolean isWirelessMode() {
+            return false;
         }
 
         @Override
@@ -413,6 +488,7 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class HyperNaquadahReactor extends NaquadahReactor<HyperNaquadahReactor> {
 
         private static final String STRUCTURE_PIECE_MAIN = "main";
@@ -471,28 +547,8 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
 
         @Override
         public MultiblockTooltipBuilder createTooltip() {
-            MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-            tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.naquadah_reactor.recipe_type"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.hyper_naquadah_reactor.tooltip.0",
-                        getMaxParallelRecipes()))
-                .addInfo(StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.tooltip.1"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.hyper_naquadah_reactor.tooltip.2",
-                        getDurationMultiple(),
-                        getEUtMultiple()))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.hyper_naquadah_reactor.tooltip.3",
-                        getExtraGas().amount))
-                .beginStructureBlock(27, 21, 21, true)
-                .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.casing"))
-                .addOutputHatch("0+", StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.casing"))
-                .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.casing"))
-                .addDynamoHatch("0+", StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.casing"))
-                .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.hyper_naquadah_reactor.casing"))
+            GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+            tt.addAutoTooltip(this)
                 .toolTipFinisher();
             return tt;
         }
@@ -523,13 +579,20 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         }
 
         @Override
+        public boolean isWirelessMode() {
+            return true;
+        }
+
+        @Override
         public void checkMachine(IGregTechTileEntity aBaseMetaTileEntity, ItemStack aStack,
             List<StructureError> errors) {
+            wirelessMode = false;
             if (!checkPiece(STRUCTURE_PIECE_MAIN, HORIZONTAL_OFF_SET, VERTICAL_OFF_SET, DEPTH_OFF_SET, errors)) {
                 return;
             }
             checkHatchMax(errors, HatchElement.Maintenance, 1);
             checkCasingMin(errors, mCountCasing, 50);
+            if (mDynamoHatches.isEmpty() && mExoticDynamoHatches.isEmpty()) wirelessMode = true;
         }
 
         @Override
@@ -553,6 +616,7 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         }
     }
 
+    @IMetaTileEntity.SkipGenerateDescription
     public static class AdvancedHyperNaquadahReactor extends NaquadahReactor<AdvancedHyperNaquadahReactor>
         implements IMTERenderer {
 
@@ -576,10 +640,6 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         public boolean enableRender = true;
         public boolean isRenderActive = false;
         public float rotation = 0;
-
-        public UUID ownerUUID;
-        public BigInteger bigEUt;
-        public boolean wirelessMode;
 
         public AdvancedHyperNaquadahReactor(int aID, String aName, String aNameRegional) {
             super(aID, aName, aNameRegional);
@@ -652,71 +712,9 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         }
 
         @Override
-        public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
-            super.onFirstTick(aBaseMetaTileEntity);
-            this.ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
-        }
-
-        @Override
         public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
             super.onPostTick(aBaseMetaTileEntity, aTick);
             rotation += 0.5F;
-        }
-
-        @NotNull
-        @Override
-        public CheckRecipeResult checkProcessing() {
-            bigEUt = null;
-            useExtraGas = hasExtraGasInput();
-
-            setupProcessingLogic(processingLogic);
-
-            CheckRecipeResult result = doCheckRecipe();
-            result = postCheckRecipe(result, processingLogic);
-            // inputs are consumed at this point
-            updateSlots();
-            if (!result.wasSuccessful()) return result;
-
-            mEfficiency = 10000;
-            mEfficiencyIncrease = 10000;
-            mMaxProgresstime = (int) (processingLogic.getDuration() * mConfigSpeedBoost);
-            lEUt = ((GTNLProcessingLogic) processingLogic).getLastRecipe()
-                .getMetadataOrDefault(NaquadahReactorMetadata.INSTANCE, Pair.of(0, 0L))
-                .getValue() * processingLogic.getCurrentParallels();
-
-            if (useExtraGas) {
-                mMaxProgresstime /= getDurationMultiple();
-
-                long mult = getEUtMultiple();
-
-                if (lEUt > Long.MAX_VALUE / mult / 100) {
-                    bigEUt = BigInteger.valueOf(lEUt)
-                        .multiply(BigInteger.valueOf(mult))
-                        .multiply(BigInteger.valueOf(mMaxProgresstime));
-                    lEUt = 0;
-                } else {
-                    lEUt *= mult;
-                }
-            }
-
-            if (wirelessMode && bigEUt == null) {
-                bigEUt = BigInteger.valueOf(lEUt)
-                    .multiply(BigInteger.valueOf(mMaxProgresstime));
-                lEUt = 0;
-            }
-
-            mOutputItems = processingLogic.getOutputItems();
-            mOutputFluids = processingLogic.getOutputFluids();
-
-            return result;
-        }
-
-        @Override
-        public void outputAfterRecipe() {
-            super.outputAfterRecipe();
-            if (bigEUt == null) return;
-            WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, bigEUt);
-            bigEUt = null;
         }
 
         @Override
@@ -765,39 +763,8 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
 
         @Override
         public MultiblockTooltipBuilder createTooltip() {
-            MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-            tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.naquadah_reactor.recipe_type"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.advanced_hyper_naquadah_reactor.tooltip.0",
-                        getMaxParallelRecipes()))
-                .addInfo(StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.tooltip.1"))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.advanced_hyper_naquadah_reactor.tooltip.2",
-                        getDurationMultiple(),
-                        getEUtMultiple()))
-                .addInfo(
-                    StatCollector.translateToLocalFormatted(
-                        "gtnl.machine.advanced_hyper_naquadah_reactor.tooltip.3",
-                        getExtraGas().amount))
-                .addInfo(StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.tooltip.4"))
-                .beginStructureBlock(35, 19, 36, true)
-                .addInputHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.casing"))
-                .addOutputHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.casing"))
-                .addEnergyHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.casing"))
-                .addDynamoHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.casing"))
-                .addMaintenanceHatch(
-                    "0+",
-                    StatCollector.translateToLocal("gtnl.machine.advanced_hyper_naquadah_reactor.casing"))
+            GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+            tt.addAutoTooltip(this)
                 .toolTipFinisher();
             return tt;
         }
@@ -825,6 +792,11 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
         @Override
         public FluidStack getExtraGas() {
             return Materials.SpaceTime.getMolten(100);
+        }
+
+        @Override
+        public boolean isWirelessMode() {
+            return true;
         }
 
         @Override
@@ -891,21 +863,13 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
             super.saveNBTData(aNBT);
             aNBT.setBoolean("isRenderActive", isRenderActive);
             aNBT.setBoolean("enableRender", enableRender);
-            aNBT.setBoolean("wirelessMode", wirelessMode);
-            if (bigEUt != null) {
-                aNBT.setString("bigEUt", bigEUt.toString());
-            }
         }
 
         @Override
         public void loadNBTData(NBTTagCompound aNBT) {
             super.loadNBTData(aNBT);
             isRenderActive = aNBT.getBoolean("isRenderActive");
-            wirelessMode = aNBT.getBoolean("wirelessMode");
             if (aNBT.hasKey("enableRender")) enableRender = aNBT.getBoolean("enableRender");
-            if (aNBT.hasKey("bigEUt")) {
-                bigEUt = new BigInteger(aNBT.getString("bigEUt"));
-            }
         }
 
         @Override
@@ -950,80 +914,6 @@ public abstract class NaquadahReactor<T extends NaquadahReactor<T>> extends Mult
                 false,
                 true);
             return built;
-        }
-
-        @Override
-        public void getWailaBody(ItemStack itemStack, List<String> currentTip, IWailaDataAccessor accessor,
-            IWailaConfigHandler config) {
-
-            super.getWailaBody(itemStack, currentTip, accessor, config);
-            final NBTTagCompound tag = accessor.getNBTData();
-
-            String euText = null;
-
-            if (tag.hasKey("bigEUt")) {
-                try {
-                    BigInteger big = new BigInteger(tag.getString("bigEUt"));
-                    euText = NumberFormatUtil.formatNumber(big);
-                } catch (NumberFormatException ignored) {}
-            }
-
-            if (euText != null) {
-                currentTip.add(
-                    StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.wireless_power_output")
-                        + EnumChatFormatting.WHITE
-                        + euText
-                        + " EU"
-                        + EnumChatFormatting.RESET);
-            }
-
-            if (tag.getBoolean("wirelessMode")) {
-                currentTip
-                    .add(EnumChatFormatting.LIGHT_PURPLE + StatCollector.translateToLocal("gtnl.waila.wireless.mode"));
-            } else if (euText != null) {
-                currentTip.add(
-                    EnumChatFormatting.LIGHT_PURPLE
-                        + StatCollector.translateToLocal("gtnl.waila.naquadah_reactor.force_wireless"));
-            }
-        }
-
-        @Override
-        public void getWailaNBTData(EntityPlayerMP player, TileEntity tile, NBTTagCompound tag, World world, int x,
-            int y, int z) {
-            super.getWailaNBTData(player, tile, tag, world, x, y, z);
-            IGregTechTileEntity tileEntity = getBaseMetaTileEntity();
-            if (tileEntity == null) return;
-            if (tileEntity.isActive()) return;
-            tag.setBoolean("useExtraGas", useExtraGas);
-
-            if (bigEUt != null) {
-                tag.setString(
-                    "bigEUt",
-                    bigEUt.abs()
-                        .toString());
-            } else {
-                tag.setLong("mEUt", Math.abs(lEUt));
-            }
-            tag.setBoolean("wirelessMode", wirelessMode);
-        }
-
-        @Override
-        public String[] getInfoData() {
-            String[] info = super.getInfoData();
-
-            String euText;
-            if (bigEUt != null) {
-                euText = NumberFormatUtil.formatNumber(bigEUt.abs());
-            } else {
-                euText = NumberFormatUtil.formatNumber(Math.abs(this.lEUt));
-            }
-
-            info[4] = StatCollector.translateToLocal("NaquadahReactor.Generates") + EnumChatFormatting.RED
-                + euText
-                + EnumChatFormatting.RESET
-                + " EU";
-
-            return info;
         }
     }
 }

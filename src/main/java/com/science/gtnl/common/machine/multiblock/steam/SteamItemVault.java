@@ -28,22 +28,19 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.util.data.ItemId;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.gtnewhorizons.modularui.common.widget.DynamicPositionedColumn;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
 import com.science.gtnl.api.IStackVault;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.modularui.SteamItemVaultGui;
-import com.science.gtnl.common.gui.modularui.VaultTypeCountFormatter;
+import com.science.gtnl.common.gui.modularui.multiblock.SteamItemVaultGui;
 import com.science.gtnl.common.machine.hatch.VaultPortHatch;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.enums.BlockIcons;
 
@@ -73,6 +70,7 @@ import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import gtPlusPlus.xmod.gregtech.api.metatileentity.implementations.MTEHatchSteamBusInput;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -124,21 +122,6 @@ public class SteamItemVault extends SteamMultiMachineBase<SteamItemVault>
     @Override
     protected @NotNull MTEMultiBlockBaseGui<?> getGui() {
         return new SteamItemVaultGui(this);
-    }
-
-    @Override
-    @Deprecated
-    public void drawTexts(DynamicPositionedColumn screenElements, SlotWidget inventorySlot) {
-        super.drawTexts(screenElements, inventorySlot);
-        screenElements
-            .widget(
-                new TextWidget()
-                    .setStringSupplier(
-                        () -> VaultTypeCountFormatter
-                            .createTypeCountText(typeCountPayloadForGui, "gtnl.gui.steam_item_vault.type_count"))
-                    .setDefaultColor(COLOR_TEXT_WHITE.get())
-                    .setEnabled(true))
-            .widget(new FakeSyncWidget.StringSyncer(this::getTypeCountPayloadForGui, this::setTypeCountPayloadFromGui));
     }
 
     @Override
@@ -366,29 +349,26 @@ public class SteamItemVault extends SteamMultiMachineBase<SteamItemVault>
     }
 
     @Override
+    public TooltipStats getTooltipStats() {
+        return null;
+    }
+
+    @Override
+    public Map<String, Object> getTooltipVars() {
+        return ImmutableMap.of("max_types", MAX_DISTINCT_ITEMS, "capacity", NF.format(MAX_CAPACITY_ITEM));
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.steam_item_vault.recipe_type"))
-            .addInfo(
-                StatCollector.translateToLocalFormatted("gtnl.machine.steam_item_vault.info.0", MAX_DISTINCT_ITEMS))
-            .addInfo(
-                StatCollector.translateToLocalFormatted("gtnl.machine.steam_item_vault.info.1", MAX_DISTINCT_ITEMS))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_item_vault.info.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_item_vault.info.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_item_vault.info.4"))
-            .addInfo(
-                StatCollector
-                    .translateToLocalFormatted("gtnl.machine.steam_item_vault.info.5", NF.format(MAX_CAPACITY_ITEM)))
-            .beginStructureBlock(7, 11, 7, false)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.steam_item_vault.casing"), 1)
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.steam_item_vault.casing"), 1)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> info = new ArrayList<>();
+        ObjectArrayList<String> info = new ObjectArrayList<>();
         info.add(
             EnumChatFormatting.YELLOW + IGregTechDeviceInformation.encode("gtnl.waila.steam_item_vault.stored_items")
                 + EnumChatFormatting.RESET);

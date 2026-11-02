@@ -31,7 +31,11 @@ public enum GuiType {
     PortableCellWorkbenchGUI(26),
     PortableCellWorkbenchOreFilterGUI(27),
     PortableCellWorkbenchRestrictionGUI(28),
-    MECellDockGUI(29);
+    MECellDockGUI(29),
+    UniversalStorageBusGUI(30),
+    UniversalBusGUI(31),
+    UniversalOreFilterGUI(32),
+    CelestweaveBackpackGUI(33);
 
     private final int id;
 

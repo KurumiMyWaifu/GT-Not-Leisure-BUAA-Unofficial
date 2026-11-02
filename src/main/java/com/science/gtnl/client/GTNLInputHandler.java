@@ -1,7 +1,9 @@
 package com.science.gtnl.client;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
@@ -9,13 +11,17 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.world.World;
 import net.minecraftforge.fluids.FluidStack;
 
 import org.lwjgl.input.Mouse;
 
 import com.cleanroommc.modularui.api.widget.Interactable;
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.science.gtnl.ScienceNotLeisure;
+import com.science.gtnl.client.gui.IBookmarkGroupDropTarget;
 import com.science.gtnl.common.item.items.Stick;
 import com.science.gtnl.common.packet.KeyBindingHandler;
 import com.science.gtnl.utils.ClientUtils;
@@ -30,9 +36,12 @@ import appeng.container.implementations.ContainerCraftConfirm;
 import appeng.container.implementations.ContainerMEMonitorable;
 import codechicken.nei.BookmarkPanel;
 import codechicken.nei.ItemPanel;
+import codechicken.nei.ItemPanels;
 import codechicken.nei.LayoutManager;
 import codechicken.nei.NEIClientConfig;
 import codechicken.nei.Widget;
+import codechicken.nei.bookmark.BookmarkItem;
+import codechicken.nei.bookmark.SortableGroup;
 import codechicken.nei.guihook.GuiContainerManager;
 import codechicken.nei.guihook.IContainerInputHandler;
 import codechicken.nei.recipe.GuiCraftingRecipe;
@@ -46,13 +55,16 @@ import cpw.mods.fml.relauncher.SideOnly;
 import gregtech.api.util.AssemblyLineUtils;
 import gregtech.common.items.ItemFluidDisplay;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @SideOnly(Side.CLIENT)
+@EventBusSubscriber(side = Side.CLIENT, phase = Phase.PRE)
 public class GTNLInputHandler implements IContainerInputHandler {
 
     public static final GTNLInputHandler INSTANCE = new GTNLInputHandler();
     public static final String AE_RETRIEVE_ITEM_KEY = "gui.ae_retrieve_item";
     public static final String AE_START_CRAFT_KEY = "gui.ae_start_craft";
+    public static final String CONFIG_FULL_KEY = "gtnl.universal_bus.config_full";
     public static final int PICK_BLOCK_COOLDOWN_TICKS = 10;
     public static final int ANIMATION_FRAME_COUNT = 14;
     public static final Map<String, BooleanSupplier> KEY_BINDINGS = createKeyBindings();
@@ -62,9 +74,7 @@ public class GTNLInputHandler implements IContainerInputHandler {
     public static int FRAME_COUNTER = 0;
     public static GuiScreen LAST_GUI_SCREEN = null;
 
-    public GTNLInputHandler() {
-        GuiContainerManager.addInputHandler(this);
-    }
+    public List<ItemStack> draggedBookmarkGroup;
 
     public static Map<String, BooleanSupplier> createKeyBindings() {
         Map<String, BooleanSupplier> keyBindings = new Object2ObjectOpenHashMap<>(2);
@@ -143,7 +153,7 @@ public class GTNLInputHandler implements IContainerInputHandler {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void onClientTick(TickEvent.ClientTickEvent event) {
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (INPUT_COOLDOWN_TICKS > 0) {
             INPUT_COOLDOWN_TICKS--;
         }
@@ -151,12 +161,12 @@ public class GTNLInputHandler implements IContainerInputHandler {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onInputEvent(final InputEvent.KeyInputEvent event) {
+    public static void onInputEvent(final InputEvent.KeyInputEvent event) {
         tryHandlePickBlockInput();
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onInputEvent(final InputEvent.MouseInputEvent event) {
+    public static void onInputEvent(final InputEvent.MouseInputEvent event) {
         tryHandlePickBlockInput();
     }
 
@@ -193,7 +203,19 @@ public class GTNLInputHandler implements IContainerInputHandler {
     public void onMouseClicked(GuiContainer gui, int mousex, int mousey, int button) {}
 
     @Override
-    public void onMouseUp(GuiContainer gui, int mousex, int mousey, int button) {}
+    public void onMouseUp(GuiContainer gui, int mousex, int mousey, int button) {
+        final List<ItemStack> group = this.draggedBookmarkGroup;
+        this.draggedBookmarkGroup = null;
+        if (button != 0 || group == null || !(gui instanceof IBookmarkGroupDropTarget target)) return;
+
+        final int placed = target.handleBookmarkGroupDrop(mousex, mousey, group);
+        if (placed < 0) return;
+
+        final int skipped = group.size() - placed;
+        if (skipped > 0 && MC.thePlayer != null) {
+            MC.thePlayer.addChatMessage(new ChatComponentTranslation(CONFIG_FULL_KEY, skipped));
+        }
+    }
 
     @Override
     public boolean keyTyped(GuiContainer gui, char keyChar, int keyID) {
@@ -209,6 +231,14 @@ public class GTNLInputHandler implements IContainerInputHandler {
     public void onMouseScrolled(GuiContainer gui, int mousex, int mousey, int scrolled) {}
 
     @Override
-    public void onMouseDragged(GuiContainer gui, int mousex, int mousey, int button, long heldTime) {}
+    public void onMouseDragged(GuiContainer gui, int mousex, int mousey, int button, long heldTime) {
+        final SortableGroup group = ItemPanels.bookmarkPanel.sortableGroup;
+        if (gui instanceof IBookmarkGroupDropTarget && group != null && this.draggedBookmarkGroup == null) {
+            this.draggedBookmarkGroup = group.getBookmarkItems()
+                .stream()
+                .map(BookmarkItem::getItemStack)
+                .collect(Collectors.toCollection(ObjectArrayList::new));
+        }
+    }
 
 }

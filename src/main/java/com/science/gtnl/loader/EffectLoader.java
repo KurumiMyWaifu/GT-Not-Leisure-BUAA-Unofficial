@@ -4,6 +4,7 @@ import net.minecraft.potion.Potion;
 
 import com.science.gtnl.common.effect.effects.AweEffect;
 import com.science.gtnl.common.effect.effects.BattleEffect;
+import com.science.gtnl.common.effect.effects.ElectromagneticParalysisEffect;
 import com.science.gtnl.common.effect.effects.PerfectPhysiqueEffect;
 import com.science.gtnl.common.effect.effects.PotionGhostlyShape;
 import com.science.gtnl.common.effect.effects.ShimmeringEffect;
@@ -11,13 +12,14 @@ import com.science.gtnl.common.effect.effects.ShimmeringEffect;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-public class EffectLoader {
+public class EffectLoader implements IContentLoader {
 
     public static Potion awe;
     public static Potion perfect_physique;
     public static Potion shimmering;
     public static Potion ghostly_shape;
     public static Potion battle;
+    public static Potion electromagneticParalysis;
 
     public static void registry() {
         awe = new AweEffect(findNextFreePotionId());
@@ -25,6 +27,7 @@ public class EffectLoader {
         shimmering = new ShimmeringEffect(findNextFreePotionId());
         ghostly_shape = new PotionGhostlyShape(findNextFreePotionId());
         battle = new BattleEffect(findNextFreePotionId());
+        electromagneticParalysis = new ElectromagneticParalysisEffect(findNextFreePotionId());
     }
 
     public static int findNextFreePotionId() {
@@ -37,4 +40,13 @@ public class EffectLoader {
         throw new RuntimeException("No free potion ID found.");
     }
 
+    @Override
+    public String name() {
+        return "effects";
+    }
+
+    @Override
+    public void preInit() {
+        registry();
+    }
 }

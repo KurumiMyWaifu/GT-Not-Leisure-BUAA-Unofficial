@@ -3,7 +3,6 @@ package com.science.gtnl.common.machine.hatch;
 import static gregtech.common.misc.WirelessNetworkManager.number_of_energy_additions;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,24 +19,25 @@ import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
 import com.science.gtnl.ScienceNotLeisure;
-import com.science.gtnl.common.gui.modularui.WirelessSteamEnergyHatchGui;
+import com.science.gtnl.common.gui.modularui.hatch.WirelessSteamEnergyHatchGui;
+import com.science.gtnl.common.steam.SteamWirelessNetworkManager;
 import com.science.gtnl.utils.enums.SteamTypes;
-import com.science.gtnl.utils.item.ItemUtils;
-import com.science.gtnl.utils.world.steam.SteamWirelessNetworkManager;
 import com.science.gtnl.utils.world.teams.TeamNetworkManager;
 
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.util.GTUtility;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class WirelessSteamEnergyHatch extends CustomFluidHatch {
 
     public UUID ownerUUID;
@@ -46,34 +46,30 @@ public class WirelessSteamEnergyHatch extends CustomFluidHatch {
     public BigInteger steamDisplay;
     private SteamTypes selectedSteam = SteamTypes.STEAM;
 
-    public WirelessSteamEnergyHatch(final int aID, final String aName, final String aNameRegional, int aTier) {
-        super(
-            SteamTypes.getSupportedFluids(),
-            aTier == 0 ? 8000000 : Integer.MAX_VALUE,
-            aID,
-            aName,
-            aNameRegional,
-            aTier);
+    public WirelessSteamEnergyHatch(final int aID, final String aName, final String aNameKey, int aTier) {
+        super(SteamTypes.getSupportedFluids(), aTier == 0 ? 8000000 : Integer.MAX_VALUE, aID, aName, aNameKey, aTier);
     }
 
-    public WirelessSteamEnergyHatch(final String aName, final ITexture[][][] aTextures, int aTier) {
+    public WirelessSteamEnergyHatch(final String aName, final ITexture[][][] aTextures, int aTier,
+        final String aNameKey) {
         super(
             SteamTypes.getSupportedFluids(),
             aTier == 0 ? 8000000 : Integer.MAX_VALUE,
             aName,
             aTier,
             new String[] { "" },
-            aTextures);
+            aTextures,
+            aNameKey);
     }
 
     @Override
     public MetaTileEntity newMetaEntity(final IGregTechTileEntity aTileEntity) {
-        return new WirelessSteamEnergyHatch(this.mName, this.mTextures, this.mTier);
+        return new WirelessSteamEnergyHatch(this.mName, this.mTextures, this.mTier, this.nameKey);
     }
 
     @Override
     public String[] getDescription() {
-        ArrayList<String> desc = new ArrayList<>();
+        ObjectArrayList<String> desc = new ObjectArrayList<>();
 
         desc.add(StatCollector.translateToLocal("gtnl.hatch.wireless_steam_energy.tooltip.0"));
         desc.add(StatCollector.translateToLocal("gtnl.hatch.wireless_steam_energy.tooltip.1"));
@@ -103,16 +99,6 @@ public class WirelessSteamEnergyHatch extends CustomFluidHatch {
     }
 
     @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after WirelessSteamEnergyHatch mui2 parity is verified.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_STEAM_LOGO)
-                .setSize(18, 18)
-                .setPos(151, 62));
-    }
-
-    @Override
     public boolean usesSteamLogoForMui2() {
         return true;
     }
@@ -133,13 +119,8 @@ public class WirelessSteamEnergyHatch extends CustomFluidHatch {
     @Override
     public void onFirstTick(IGregTechTileEntity aBaseMetaTileEntity) {
         super.onFirstTick(aBaseMetaTileEntity);
-        ownerUUID = aBaseMetaTileEntity.getOwnerUuid();
-
-        isInTeam = true;
-        teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
-        steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
-
         if (!aBaseMetaTileEntity.isServerSide()) return;
+        refreshSteamNetworkState(aBaseMetaTileEntity);
         tryFetchingSteam();
     }
 
@@ -155,13 +136,23 @@ public class WirelessSteamEnergyHatch extends CustomFluidHatch {
     public void onPostTick(IGregTechTileEntity baseMetaTileEntity, long tick) {
         super.onPostTick(baseMetaTileEntity, tick);
         if (baseMetaTileEntity.isServerSide() && tick % 200 == 0L) {
-            if (ownerUUID == null) {
-                ownerUUID = baseMetaTileEntity.getOwnerUuid();
-            }
-            isInTeam = true;
-            teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
-            steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
+            refreshSteamNetworkState(baseMetaTileEntity);
         }
+    }
+
+    private void refreshSteamNetworkState(IGregTechTileEntity baseMetaTileEntity) {
+        UUID baseOwnerUUID = baseMetaTileEntity.getOwnerUuid();
+        if (baseOwnerUUID != null) ownerUUID = baseOwnerUUID;
+        if (ownerUUID == null) {
+            isInTeam = false;
+            teamUUID = null;
+            steamDisplay = BigInteger.ZERO;
+            return;
+        }
+
+        isInTeam = true;
+        teamUUID = TeamNetworkManager.getTeamId(ownerUUID);
+        steamDisplay = SteamWirelessNetworkManager.getUserSteam(ownerUUID);
     }
 
     private void tryFetchingSteam() {

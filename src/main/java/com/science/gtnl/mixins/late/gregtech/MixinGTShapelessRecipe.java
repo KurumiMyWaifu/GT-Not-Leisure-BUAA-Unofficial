@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.science.gtnl.utils.recipes.ReversedRecipeRegistry;
+import com.science.gtnl.common.recipe.gtnl.ReversedRecipeRegistry;
 
 import gregtech.api.util.GTShapelessRecipe;
 import gregtech.common.blocks.ItemMachines;
@@ -21,7 +21,7 @@ public class MixinGTShapelessRecipe {
         method = "<init>(Lnet/minecraft/item/ItemStack;ZZZ[Lnet/minecraft/enchantment/Enchantment;[I[Ljava/lang/Object;)V",
         at = @At("RETURN"))
     private void init(ItemStack aResult, boolean aRemovableByGT, boolean aKeepingNBT, boolean overwriteNBT,
-        Enchantment[] aEnchantmentsAdded, int[] aEnchantmentLevelsAdded, Object[] aRecipe, CallbackInfo ci) {
+        Enchantment[] enchants, int[] enchantLevels, Object[] aRecipe, CallbackInfo ci) {
         if (aResult.getItem() instanceof ItemMachines) {
             ObjectArrayList<Object> filteredRecipe = new ObjectArrayList<>();
             for (Object obj : aRecipe) {

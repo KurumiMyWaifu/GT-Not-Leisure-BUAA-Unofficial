@@ -1,7 +1,6 @@
 package com.science.gtnl.common.command;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -14,10 +13,11 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.science.gtnl.utils.Utils;
+import com.gtnllib.utils.GameUtils;
 import com.science.gtnl.utils.world.teams.TeamNetworkManager;
 
 import gregtech.common.misc.WirelessNetworkManager;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class CommandEnergyNetwork extends CommandBase {
 
@@ -57,7 +57,7 @@ public class CommandEnergyNetwork extends CommandBase {
 
         switch (subCommand) {
             case "add": {
-                if (!Utils.hasPermission(sender, 2)) {
+                if (!GameUtils.hasPermission(sender, 2)) {
                     sender.addChatMessage(new ChatComponentTranslation("commands.error.perm"));
                     break;
                 }
@@ -112,7 +112,7 @@ public class CommandEnergyNetwork extends CommandBase {
             }
 
             case "set": {
-                if (!Utils.hasPermission(sender, 2)) {
+                if (!GameUtils.hasPermission(sender, 2)) {
                     sender.addChatMessage(new ChatComponentTranslation("commands.error.perm"));
                     break;
                 }
@@ -182,7 +182,7 @@ public class CommandEnergyNetwork extends CommandBase {
                 boolean senderIsLeaderOfTargetTeam = TeamNetworkManager.isSameTeam(uuidSender, uuidTeam)
                     && TeamNetworkManager.isTeamOwner(uuidSender);
 
-                if (!senderIsLeaderOfTargetTeam && !Utils.hasPermission(sender, 2)) {
+                if (!senderIsLeaderOfTargetTeam && !GameUtils.hasPermission(sender, 2)) {
                     sender.addChatMessage(new ChatComponentTranslation("commands.error.perm"));
                     break;
                 }
@@ -258,7 +258,7 @@ public class CommandEnergyNetwork extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args) {
-        List<String> completions = new ArrayList<>();
+        List<String> completions = new ObjectArrayList<>();
         String currentArg = args.length == 0 ? "" : args[args.length - 1].trim();
 
         if (args.length == 1) {

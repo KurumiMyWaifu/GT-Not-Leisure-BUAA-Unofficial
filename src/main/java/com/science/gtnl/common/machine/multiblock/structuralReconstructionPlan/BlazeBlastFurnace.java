@@ -8,7 +8,6 @@ import java.util.List;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -21,6 +20,7 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.hatch.CustomFluidHatch;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.enums.GTNLItemList;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
@@ -50,7 +50,6 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
-import gregtech.api.structure.error.TranslatableText;
 import gregtech.api.util.ExoticEnergyInputHelper;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTStructureUtility;
@@ -64,7 +63,7 @@ import gtPlusPlus.xmod.gregtech.common.blocks.textures.TexturesGtBlock;
 @IMetaTileEntity.SkipGenerateName
 public class BlazeBlastFurnace extends MultiMachineBase<BlazeBlastFurnace> implements ISurvivalConstructable {
 
-    private static final TranslatableText BLAZE_INPUT_HATCH_NAME = TranslatableText.lang("FluidBlazeInputHatch");
+    private static final String BLAZE_INPUT_HATCH_NAME = "gtnl.hatch.fluid_blaze_input.name";
 
     private static final String STRUCTURE_PIECE_MAIN = "main";
     private static final String BBF_STRUCTURE_FILE_PATH = RESOURCE_ROOT_ID + ":" + "multiblock/blaze_blast_furnace";
@@ -126,6 +125,7 @@ public class BlazeBlastFurnace extends MultiMachineBase<BlazeBlastFurnace> imple
                     GTStructureUtility.buildHatchAdder(BlazeBlastFurnace.class)
                         .adder(BlazeBlastFurnace::addFluidBlazeInputHatch)
                         .hatchId(21503)
+                        .description(() -> BLAZE_INPUT_HATCH_NAME)
                         .shouldReject(x -> !x.mFluidBlazeInputHatch.isEmpty())
                         .casingIndex(getCasingTextureID())
                         .hint(1)
@@ -244,23 +244,18 @@ public class BlazeBlastFurnace extends MultiMachineBase<BlazeBlastFurnace> imple
     }
 
     @Override
-    public int getMaxTierSkip() {
-        return 0;
-    }
-
-    @Override
     public void onPostTick(IGregTechTileEntity aBaseMetaTileEntity, long aTick) {
         super.onPostTick(aBaseMetaTileEntity, aTick);
         if (this.mStartUpCheck < 0) {
-            startRecipeProcessing();
             if (this.mMaxProgresstime > 0 && aTick % 20 == 0) {
+                startRecipeProcessing();
                 int baseAmount = 10 * GTUtility.getTier(-lEUt) * GTUtility.getTier(-lEUt) * mMultiTier;
                 if (!this.depleteInputFromRestrictedHatches(this.mFluidBlazeInputHatch, baseAmount)) {
                     this.causeMaintenanceIssue();
                     this.stopMachine(ShutDownReasonRegistry.outOfFluid(Materials.Blaze.getMolten(baseAmount)));
                 }
+                endRecipeProcessing();
             }
-            endRecipeProcessing();
         }
     }
 
@@ -378,41 +373,14 @@ public class BlazeBlastFurnace extends MultiMachineBase<BlazeBlastFurnace> imple
     }
 
     @Override
+    public boolean addsVoltageHeat() {
+        return true;
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.5"))
-            .addSupportMultiAmp()
-            .beginStructureBlock(7, 6, 7, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"), 1)
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"), 1)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"), 1)
-            .addOutputHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"),
-                1)
-            .addEnergyHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"),
-                1)
-            .addMufflerHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.1"),
-                1)
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"),
-                1)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("FluidBlazeInputHatch"),
-                StatCollector.translateToLocal("gtnl.machine.blaze_blast_furnace.tooltip.casing.0"),
-                1)
-            .addSubChannelUsage(GTStructureChannels.HEATING_COIL)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

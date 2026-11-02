@@ -3,12 +3,12 @@ package com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.CustomHatchElement.ParallelCon;
 
+import java.util.Collections;
 import java.util.List;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -16,12 +16,13 @@ import org.jetbrains.annotations.NotNull;
 import com.gtnewhorizon.structurelib.alignment.IAlignmentLimits;
 import com.gtnewhorizon.structurelib.alignment.constructable.ISurvivalConstructable;
 import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
+import com.gtnewhorizon.structurelib.structure.IStructureElement;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.recipe.RocketAssemblerBackend;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.common.render.tile.RocketAssemblerRenderer;
 import com.science.gtnl.utils.StructureUtils;
@@ -40,6 +41,7 @@ import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.logic.ProcessingLogic;
 import gregtech.api.metatileentity.GregTechTileClientEvents;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
@@ -123,21 +125,20 @@ public class RocketAssembler extends GTMMultiMachineBase<RocketAssembler>
             .addElement('H', Casings.HermeticCasing3.asElement())
             .addElement('I', GTStructureUtility.ofFrame(Materials.Steel))
             .addElement('J', GTStructureUtility.ofFrame(Materials.StainlessSteel))
-            .addElement(
-                'K',
-                StructureUtility.ofChain(
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.landingPad, 0),
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.landingPadFull, 0),
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.fakeBlock),
-                    StructureUtility.isAir()))
-            .addElement(
-                'L',
-                StructureUtility.ofChain(
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.landingPad, 0),
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.landingPadFull, 0),
-                    StructureUtility.ofBlockAnyMeta(GCBlocks.fakeBlock),
-                    StructureUtility.isAir()))
+            .addElement('K', landingPad())
+            .addElement('L', landingPad())
             .build();
+    }
+
+    // A formed pad turns into Galacticraft dummy blocks, which have no name of their own.
+    private static IStructureElement<RocketAssembler> landingPad() {
+        return StructureUtility.withDescription(
+            Collections.singletonList(GCBlocks.landingPad.getUnlocalizedName() + ".name"),
+            StructureUtility.ofChain(
+                StructureUtility.ofBlockAnyMeta(GCBlocks.landingPad, 0),
+                StructureUtility.ofBlockAnyMeta(GCBlocks.landingPadFull, 0),
+                StructureUtility.ofBlockAnyMeta(GCBlocks.fakeBlock),
+                StructureUtility.isAir()));
     }
 
     @Override
@@ -199,10 +200,16 @@ public class RocketAssembler extends GTMMultiMachineBase<RocketAssembler>
 
             @NotNull
             @Override
-            public CalculationResult validateAndCalculateRecipe(@NotNull GTRecipe recipe) {
-                if (recipe == RocketAssemblerBackend.notFoundRecipe)
-                    return CalculationResult.ofFailure(SimpleCheckRecipeResult.ofFailure("missing_schematic"));
-                return super.validateAndCalculateRecipe(recipe);
+            public CheckRecipeResult validateRecipe(@NotNull GTRecipe recipe) {
+                if (recipe.mSpecialItems instanceof ItemStack schematic) {
+                    for (ItemStack input : inputItems) {
+                        if (input != null && GTUtility.areStacksEqual(schematic, input, true)) {
+                            return super.validateRecipe(recipe);
+                        }
+                    }
+                    return SimpleCheckRecipeResult.ofFailure("missing_schematic");
+                }
+                return super.validateRecipe(recipe);
             }
 
         }.setMaxParallelSupplier(this::getTrueParallel);
@@ -238,18 +245,8 @@ public class RocketAssembler extends GTMMultiMachineBase<RocketAssembler>
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.rocket_assembler.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.rocket_assembler.info.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.rocket_assembler.info.1"))
-            .addSupportAny()
-            .beginStructureBlock(17, 24, 16, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.rocket_assembler.casing"))
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.rocket_assembler.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.rocket_assembler.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.rocket_assembler.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.rocket_assembler.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

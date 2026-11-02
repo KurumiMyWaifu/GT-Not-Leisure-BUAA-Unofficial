@@ -2,8 +2,6 @@ package com.science.gtnl.common.item;
 
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
@@ -20,7 +18,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.Facing;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.fluids.BlockFluidBase;
@@ -29,19 +26,22 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidContainerItem;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
-import com.science.gtnl.client.GTNLCreativeTabs;
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.science.gtnl.loader.ItemLoader;
 import com.science.gtnl.utils.enums.GTNLItemList;
 
-import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import vazkii.botania.common.Botania;
 
+@EventBusSubscriber(phase = Phase.PRE)
 public class ItemInfinityItem extends Item implements IFluidContainerItem {
 
     private final String displayNameKey;
@@ -93,10 +93,6 @@ public class ItemInfinityItem extends Item implements IFluidContainerItem {
         this.setTextureName(RESOURCE_ROOT_ID + ":" + registrationName);
         this.setCreativeTab(GTNLCreativeTabs.GTNotLeisureItem);
         this.setMaxStackSize(1);
-        MinecraftForge.EVENT_BUS.register(this);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(this);
         GameRegistry.registerItem(this, registrationName);
         itemList.set(new ItemStack(this));
     }
@@ -203,14 +199,14 @@ public class ItemInfinityItem extends Item implements IFluidContainerItem {
 
     public void clearConnectedFluid(World world, int x, int y, int z, Block fluidBlock, int limit) {
         FLUID_CLEAR_EXECUTOR.submit(() -> {
-            Queue<BlockPos> queue = new ArrayDeque<>();
+            ObjectArrayFIFOQueue<BlockPos> queue = new ObjectArrayFIFOQueue<>();
             LongSet visited = new LongOpenHashSet();
-            List<BlockPos> blocksToClear = new ArrayList<>();
+            List<BlockPos> blocksToClear = new ObjectArrayList<>();
 
-            queue.add(new BlockPos(x, y, z));
+            queue.enqueue(new BlockPos(x, y, z));
 
             while (!queue.isEmpty() && blocksToClear.size() < limit) {
-                BlockPos pos = queue.poll();
+                BlockPos pos = queue.dequeue();
                 int px = pos.x, py = pos.y, pz = pos.z;
                 long key = (((long) px) & 0x3FFFFFF) << 38 | (((long) py) & 0xFFF) << 26 | (((long) pz) & 0x3FFFFFF);
                 if (visited.contains(key)) continue;
@@ -225,7 +221,7 @@ public class ItemInfinityItem extends Item implements IFluidContainerItem {
                         for (int dy = -1; dy <= 1; dy++) {
                             for (int dz = -1; dz <= 1; dz++) {
                                 if (Math.abs(dx) + Math.abs(dy) + Math.abs(dz) == 1) {
-                                    queue.add(new BlockPos(px + dx, py + dy, pz + dz));
+                                    queue.enqueue(new BlockPos(px + dx, py + dy, pz + dz));
                                 }
                             }
                         }
@@ -264,14 +260,14 @@ public class ItemInfinityItem extends Item implements IFluidContainerItem {
     }
 
     @SubscribeEvent
-    public void onWorldTick(TickEvent.WorldTickEvent event) {
+    public static void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
             MainThreadTaskQueue.runAllTasks();
         }
     }
 
     @SubscribeEvent
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
         EntityPlayer player = event.getPlayer();
         if (player == null || player.worldObj.isRemote) return;
 
@@ -284,7 +280,7 @@ public class ItemInfinityItem extends Item implements IFluidContainerItem {
     public static final ObjectOpenHashSet<UUID> PLAYERS_WITH_REACH = new ObjectOpenHashSet<>();
 
     @SubscribeEvent
-    public void onPlayerTick(LivingEvent.LivingUpdateEvent event) {
+    public static void onPlayerTick(LivingEvent.LivingUpdateEvent event) {
         if (!(event.entityLiving instanceof EntityPlayer player)) return;
 
         ItemStack held = player.getHeldItem();

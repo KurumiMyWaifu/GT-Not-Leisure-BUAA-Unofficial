@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.hatch;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -18,13 +17,14 @@ import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.science.gtnl.config.MainConfig;
-import com.science.gtnl.utils.Utils;
+import com.science.gtnl.common.me.InterfaceNameLocalization;
 
+import appeng.api.util.IInterfaceViewable;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.IDataCopyable;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
@@ -36,9 +36,12 @@ import gregtech.common.tileentities.machines.IHatchWatcher;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputSlave;
 import gregtech.common.tileentities.machines.RecipeCheckReason;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class SuperCraftingInputProxy extends MTEHatchInputBus implements IDualInputHatch, IDataCopyable, IHatchWatcher {
 
     private SuperCraftingInputHatchME masterSuper;
@@ -67,6 +70,23 @@ public class SuperCraftingInputProxy extends MTEHatchInputBus implements IDualIn
     public SuperCraftingInputProxy(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, 0, aDescription, aTextures);
         disableSort = true;
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.super_crafting_input_proxy.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
+    }
+
+    @Override
+    public String[] getDescription() {
+        return mDescriptionArray;
     }
 
     @Override
@@ -152,7 +172,7 @@ public class SuperCraftingInputProxy extends MTEHatchInputBus implements IDualIn
 
     @Override
     public String[] getInfoData() {
-        var ret = new ArrayList<String>();
+        var ret = new ObjectArrayList<String>();
         if (getMasterSuper() != null) {
             ret.add(
                 IGregTechDeviceInformation.encode(
@@ -419,22 +439,8 @@ public class SuperCraftingInputProxy extends MTEHatchInputBus implements IDualIn
                     + tag.getInteger("craftingMasterZ"));
         }
 
-        if (tag.hasKey("superMasterName")) {
-            currenttip.add(
-                EnumChatFormatting.GOLD
-                    + (MainConfig.machine.enableHatchInterfaceTerminalEnhance
-                        ? Utils.getExtraInterfaceName(tag.getString("superMasterName"))
-                        : tag.getString("superMasterName"))
-                    + EnumChatFormatting.RESET);
-        }
-        if (tag.hasKey("craftingMasterName")) {
-            currenttip.add(
-                EnumChatFormatting.GOLD
-                    + (MainConfig.machine.enableHatchInterfaceTerminalEnhance
-                        ? Utils.getExtraInterfaceName(tag.getString("craftingMasterName"))
-                        : tag.getString("craftingMasterName"))
-                    + EnumChatFormatting.RESET);
-        }
+        gtnl$addMasterName(currenttip, tag, "superMaster");
+        gtnl$addMasterName(currenttip, tag, "craftingMaster");
 
         super.getWailaBody(itemStack, currenttip, accessor, config);
     }
@@ -456,10 +462,20 @@ public class SuperCraftingInputProxy extends MTEHatchInputBus implements IDualIn
             tag.setInteger("craftingMasterZ", craftingMasterZ);
         }
 
-        if (getMasterSuper() != null) tag.setString("superMasterName", getMasterSuper().getName());
-        if (getCraftingMaster() != null) tag.setString("craftingMasterName", getCraftingMaster().getName());
+        if (getMasterSuper() != null) gtnl$writeMasterName(tag, "superMaster", getMasterSuper());
+        if (getCraftingMaster() != null) gtnl$writeMasterName(tag, "craftingMaster", getCraftingMaster());
 
         super.getWailaNBTData(player, tile, tag, world, x, y, z);
+    }
+
+    private static void gtnl$writeMasterName(NBTTagCompound tag, String key, IInterfaceViewable master) {
+        InterfaceNameLocalization
+            .writeName(tag, key, master.getRawName(), master.getNameSuffix(), master.getDisplayRep());
+    }
+
+    private static void gtnl$addMasterName(List<String> currenttip, NBTTagCompound tag, String key) {
+        String name = InterfaceNameLocalization.localizeName(tag, key);
+        if (!name.isEmpty()) currenttip.add(EnumChatFormatting.GOLD + name + EnumChatFormatting.RESET);
     }
 
     @Override

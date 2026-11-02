@@ -10,6 +10,7 @@ import com.science.gtnl.utils.recipes.metadata.IsaMillMetadata;
 
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.OrePrefixes;
+import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
@@ -60,9 +61,8 @@ public class IsaMillRecipes implements IRecipePool {
     public void addIsaMillRecipe(Materials material, OrePrefixes prefix, int circuitNumber, int outputAmount,
         int fluidAmount, int tier, int duration) {
         RecipeBuilder.builder()
-            .itemInputs(
-                GTUtility.getIntegratedCircuit(circuitNumber),
-                GTOreDictUnificator.get(prefix, material, prefix == OrePrefixes.rawOre ? 16L : 1L))
+            .itemInputs(GTOreDictUnificator.get(prefix, material, prefix == OrePrefixes.rawOre ? 16L : 1L))
+            .circuit(circuitNumber)
             .itemOutputs(
                 GTUtility.copyAmountUnsafe(
                     outputAmount,
@@ -71,14 +71,15 @@ public class IsaMillRecipes implements IRecipePool {
             .fluidInputs(GTModHandler.getDistilledWater(fluidAmount))
             .metadata(ISAMILL_TIER, tier)
             .duration(duration)
-            .eut(1920)
+            .eut(TierEU.RECIPE_EV)
             .addTo(IsaMR);
     }
 
     public void addIsaMillRecipeCustom(Materials material, ItemStack custom, int circuitNumber, int outputAmount,
         int fluidAmount, int tier, int duration) {
         RecipeBuilder.builder()
-            .itemInputs(GTUtility.getIntegratedCircuit(circuitNumber), custom)
+            .itemInputs(custom)
+            .circuit(circuitNumber)
             .itemOutputs(
                 GTUtility.copyAmountUnsafe(
                     outputAmount,
@@ -87,7 +88,7 @@ public class IsaMillRecipes implements IRecipePool {
             .fluidInputs(GTModHandler.getDistilledWater(fluidAmount))
             .metadata(ISAMILL_TIER, tier)
             .duration(duration)
-            .eut(1920)
+            .eut(TierEU.RECIPE_EV)
             .addTo(IsaMR);
     }
 

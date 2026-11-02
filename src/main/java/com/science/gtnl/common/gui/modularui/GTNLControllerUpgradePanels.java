@@ -17,6 +17,7 @@ import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.DynamicDrawable;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.utils.item.ItemStackHandler;
 import com.cleanroommc.modularui.value.sync.BooleanSyncValue;
 import com.cleanroommc.modularui.value.sync.IntSyncValue;
 import com.cleanroommc.modularui.value.sync.InteractionSyncHandler;
@@ -29,7 +30,7 @@ import com.cleanroommc.modularui.widgets.layout.Grid;
 import com.cleanroommc.modularui.widgets.slot.ItemSlot;
 import com.cleanroommc.modularui.widgets.slot.ModularSlot;
 import com.cleanroommc.modularui.widgets.slot.SlotGroup;
-import com.gtnewhorizons.modularui.api.forge.ItemStackHandler;
+import com.gtnllib.gui.widget.ListeningItemHandler;
 import com.science.gtnl.api.IControllerUpgrade;
 import com.science.gtnl.common.gui.GTNLMui2Textures;
 
@@ -38,6 +39,7 @@ import codechicken.nei.recipe.GuiUsageRecipe;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.modularui2.GTGuiTextures;
+import gregtech.api.util.GTUtility;
 import gregtech.common.gui.modularui.synchandler.NBTTagSyncHandler;
 import gregtech.common.modularui2.widget.SlotLikeButtonWidget;
 
@@ -181,11 +183,13 @@ public class GTNLControllerUpgradePanels {
         int rows) {
         NBTTagSyncHandler paidCostsSyncer = getPaidCostsSyncer(syncManager, currentPanel, displayPage);
         return new Grid().coverChildren()
-            .gridOfWidthHeight(columns, rows, (x, y, index) -> {
-                return createCostWidget(
-                    () -> getUpgradeItem(currentPanel, displayPage, index),
-                    () -> getPaidCost(paidCostsSyncer, index)).size(COST_CELL_WIDTH, ItemSlot.SIZE);
-            });
+            .gridOfWidthHeight(
+                columns,
+                rows,
+                (x, y,
+                    index) -> createCostWidget(
+                        () -> getUpgradeItem(currentPanel, displayPage, index),
+                        () -> getPaidCost(paidCostsSyncer, index)).size(COST_CELL_WIDTH, ItemSlot.SIZE));
     }
 
     private Flow createCostWidget(Supplier<ItemStack> stackSupplier, IntSupplier paidCostSupplier) {
@@ -236,7 +240,7 @@ public class GTNLControllerUpgradePanels {
 
     private Grid createInputGrid(PanelSyncManager syncManager, int columns, int rows) {
         ItemStackHandler inputHandler = controllerUpgrade.getUpgradeInputSlotHandler();
-        GTNLMui2ItemHandlerAdapter adapter = new GTNLMui2ItemHandlerAdapter(inputHandler, this::markMultiblockDirty);
+        ListeningItemHandler adapter = new ListeningItemHandler(inputHandler, this::markMultiblockDirty);
         syncManager.registerSlotGroup(UPGRADE_INPUT_SLOT_GROUP, rows, UPGRADE_INPUT_SHIFT_CLICK_PRIORITY);
 
         return new Grid().coverChildren()
@@ -353,7 +357,7 @@ public class GTNLControllerUpgradePanels {
 
     private ItemStack getUpgradeItem(boolean currentPanel, int displayPage, int itemIndex) {
         ItemStack[] upgradeItems = getUpgradeItems(currentPanel, displayPage);
-        return itemIndex < upgradeItems.length ? upgradeItems[itemIndex] : null;
+        return itemIndex < upgradeItems.length ? GTUtility.copyOrNull(upgradeItems[itemIndex]) : null;
     }
 
     private int[] getUpgradePaidCosts(boolean currentPanel, int displayPage) {

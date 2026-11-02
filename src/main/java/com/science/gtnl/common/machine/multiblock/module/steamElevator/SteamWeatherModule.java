@@ -4,6 +4,7 @@ import net.minecraft.util.StatCollector;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.mixins.early.gregtech.AccessorProcessingLogic;
 
@@ -114,12 +115,8 @@ public class SteamWeatherModule extends SteamElevatorModuleBase {
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.steam_weather_module.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_weather_module.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_weather_module.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_weather_module.tooltip.2"))
-            .beginStructureBlock(1, 5, 2, false)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

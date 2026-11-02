@@ -4,7 +4,6 @@ import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 
 import java.util.List;
 
-import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.StatCollector;
@@ -17,7 +16,9 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.gtnllib.utils.GameUtils;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
 
 import gregtech.api.casing.Casings;
@@ -89,8 +90,8 @@ public class BrickedBlastFurnace extends SteamMultiMachineBase<BrickedBlastFurna
                 'E',
                 StructureUtility.ofChain(
                     StructureUtility.ofBlockAnyMeta(Blocks.stonebrick),
-                    StructureUtility.ofBlockAnyMeta(
-                        Mods.Chisel.isModLoaded() ? Block.getBlockFromName("chisel:stonebricksmooth") : Blocks.stone)))
+                    StructureUtility
+                        .ofBlockAnyMeta(GameUtils.blockOr(Mods.Chisel.ID, "stonebricksmooth", Blocks.stone))))
             .build();
     }
 
@@ -133,11 +134,6 @@ public class BrickedBlastFurnace extends SteamMultiMachineBase<BrickedBlastFurna
     @Override
     public RecipeMap<?> getRecipeMap() {
         return RecipeMaps.primitiveBlastRecipes;
-    }
-
-    @Override
-    public boolean getPerfectOC() {
-        return false;
     }
 
     @Override
@@ -184,19 +180,8 @@ public class BrickedBlastFurnace extends SteamMultiMachineBase<BrickedBlastFurna
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.tooltip.4"))
-            .beginStructureBlock(15, 14, 15, true)
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.structure.0"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.structure.1"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.structure.2"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.structure.3"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.bricked_blast_furnace.structure.4"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

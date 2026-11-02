@@ -18,6 +18,7 @@ import com.science.gtnl.utils.enums.GTNLItemList;
 
 import appeng.api.storage.data.IAEFluidStack;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.util.GTUtil;
@@ -25,12 +26,14 @@ import gregtech.common.tileentities.machines.outputme.MTEHatchOutputME;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class OutputHatchMEProxy extends MTEHatchOutputME {
 
     public static final String COPIED_DATA_IDENTIFIER = "outputHatchME";
 
     public int masterX, masterY, masterZ, masterDim;
-    public boolean masterSet = false; // indicate if values of masterX, masterY, masterZ are valid
+    public boolean masterSet = false;
     public MTEHatchOutputME master;
     private long lastProxyFlushTick;
 
@@ -40,6 +43,18 @@ public class OutputHatchMEProxy extends MTEHatchOutputME {
 
     public OutputHatchMEProxy(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.output_hatch_me_proxy.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override

@@ -15,7 +15,6 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
@@ -32,12 +31,13 @@ import com.science.gtnl.common.gui.modularui.GTNLMultiBlockBaseGui;
 import com.science.gtnl.common.machine.hatch.CustomFluidHatch;
 import com.science.gtnl.common.machine.hatch.SuperCraftingInputHatchME;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLMaterials;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.config.MachineConfig;
 import com.science.gtnl.utils.StructureUtils;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.item.ItemUtils;
-import com.science.gtnl.utils.machine.PortalToAlfheimExplosion;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
@@ -46,7 +46,6 @@ import gregtech.api.casing.Casings;
 import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Mods;
 import gregtech.api.enums.Textures;
-import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
@@ -59,8 +58,6 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
-import gregtech.api.structure.error.TranslatableText;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -69,13 +66,13 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.tileentities.machines.IDualInputHatch;
 import gregtech.common.tileentities.machines.IDualInputInventory;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
 public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationArrayToAlfheim> {
 
-    private static final TranslatableText MANA_INPUT_HATCH_NAME = TranslatableText
-        .lang("gtnl.hatch.fluid_mana_input.name");
+    private static final String MANA_INPUT_HATCH_NAME = "gtnl.hatch.fluid_mana_input.name";
     private static final String STRUCTURE_PIECE_MAIN = "main";
     private static final String TATA_STRUCTURE_FILE_PATH = RESOURCE_ROOT_ID + ":"
         + "multiblock/teleportation_array_to_alfheim";
@@ -92,7 +89,7 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
 
     public boolean enableInfinityMana = false;
     public ArrayList<CustomFluidHatch> mFluidManaInputHatch = new ArrayList<>();
-    public final ArrayList<FluidStack> sharedManaRecipeFluids = new ArrayList<>();
+    public final ObjectArrayList<FluidStack> sharedManaRecipeFluids = new ObjectArrayList<>();
 
     public TeleportationArrayToAlfheim(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -169,6 +166,7 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
                     buildHatchAdder(TeleportationArrayToAlfheim.class)
                         .adder(TeleportationArrayToAlfheim::addFluidManaInputHatch)
                         .hatchId(21501)
+                        .description(() -> MANA_INPUT_HATCH_NAME)
                         .shouldReject(x -> !x.mFluidManaInputHatch.isEmpty())
                         .casingIndex(Casings.RadiantNaquadahAlloyCasing.getTextureId())
                         .hint(1)
@@ -217,7 +215,7 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
     @Override
     public void setupParameters() {
         super.setupParameters();
-        if (GTUtility.areStacksEqual(getControllerSlot(), GTModHandler.getModItem(Mods.Botania.ID, "pool", 1, 1), true)
+        if (GTUtility.areStacksEqual(getControllerSlot(), ModsItemlist.BotaniaEverlastingManaPool.get(1), true)
             || GTUtility.areStacksEqual(getControllerSlot(), asgardandelion, true)) {
             enableInfinityMana = true;
         }
@@ -503,43 +501,8 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.3"))
-            .addPerfectOCInfo()
-            .addSupportAny()
-            .beginStructureBlock(23, 18, 23, false)
-            .addInputBus(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addOutputBus(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addInputHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addOutputHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addEnergyHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("gtnl.hatch.fluid_mana_input.name"),
-                StatCollector.translateToLocal("gtnl.machine.teleportation_array_to_alfheim.tooltip.casing"),
-                1)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -561,16 +524,6 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
             GTGuiTextures.OVERLAY_BUTTON_MACHINEMODE_LPF_FLUID,
             GTGuiTextures.OVERLAY_BUTTON_MACHINEMODE_LPF_METAL,
             GTGuiTextures.OVERLAY_BUTTON_MACHINEMODE_BENDING);
-    }
-
-    @Override
-    @Deprecated
-    public void setMachineModeIcons() {
-        // TODO: Remove this mui1 fallback after this GUI no longer supports mui1 startup paths.
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_DEFAULT);
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_LPF_FLUID);
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_LPF_METAL);
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_BENDING);
     }
 
     @Override
@@ -601,7 +554,7 @@ public class TeleportationArrayToAlfheim extends MultiMachineBase<TeleportationA
     }
 
     public void triggerExplosion(IGregTechTileEntity aBaseMetaTileEntity, float strength) {
-        if (MainConfig.machine.portal_to_alfheim.bigBoom) {
+        if (MachineConfig.portal_to_alfheim.bigBoom) {
             ProcessHandler.addProcess(
                 new PortalToAlfheimExplosion(
                     aBaseMetaTileEntity.getWorld(),

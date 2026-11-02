@@ -3,13 +3,11 @@ package com.science.gtnl.common.machine.multiblock;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +20,7 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.hatch.SuperCraftingInputHatchME;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.enums.BlockIcons;
@@ -46,6 +45,7 @@ import gregtech.common.tileentities.machines.IDualInputInventory;
 import gregtech.common.tileentities.machines.IDualInputInventoryWithPattern;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
 import gtneioreplugin.plugin.block.ModBlocks;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 public class LargeGasCollector extends MultiMachineBase<LargeGasCollector> implements ISurvivalConstructable {
@@ -57,7 +57,7 @@ public class LargeGasCollector extends MultiMachineBase<LargeGasCollector> imple
     private static final int DEPTH_OFF_SET = 0;
     private static final String[][] shape = StructureUtils.readStructureFromFile(LGC_STRUCTURE_FILE_PATH);
 
-    public final ArrayList<ItemStack> dimensionRecipeInputs = new ArrayList<>(2);
+    public final ObjectArrayList<ItemStack> dimensionRecipeInputs = new ObjectArrayList<>(2);
 
     public LargeGasCollector(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -230,18 +230,8 @@ public class LargeGasCollector extends MultiMachineBase<LargeGasCollector> imple
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.large_gas_collector.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_gas_collector.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_gas_collector.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_gas_collector.tooltip.2"))
-            .addSupportAny()
-            .beginStructureBlock(5, 5, 5, true)
-            .addOutputHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_gas_collector.casing"))
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.large_gas_collector.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.large_gas_collector.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_gas_collector.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_gas_collector.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

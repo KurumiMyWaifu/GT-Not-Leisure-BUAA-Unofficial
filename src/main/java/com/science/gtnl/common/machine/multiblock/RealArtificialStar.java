@@ -6,7 +6,6 @@ import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,15 +30,16 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.ScienceNotLeisure;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.config.MachineConfig;
 import com.science.gtnl.loader.BlockLoader;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.enums.GTNLItemList;
-import com.science.gtnl.utils.enums.ModList;
+import com.science.gtnl.utils.enums.ModsItemlist;
 
 import goodgenerator.loader.Loaders;
 import gregtech.api.GregTechAPI;
@@ -57,10 +57,10 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrorRegistry;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 import tectech.thing.casing.TTCasingsContainer;
@@ -76,25 +76,18 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
     private static final String RAS_STRUCTURE_FILE_PATH = ScienceNotLeisure.RESOURCE_ROOT_ID + ":"
         + "multiblock/real_artificial_star";
     private static final String[][] shape = StructureUtils.readStructureFromFile(RAS_STRUCTURE_FILE_PATH);
-    public static long MaxOfDepletedExcitedNaquadahFuelRod = MainConfig.machine.artificial_star.euEveryDepletedExcitedNaquadahFuelRod;
-    public static long MaxOfEnhancementCore = MainConfig.machine.artificial_star.euEveryEnhancementCore;
+    public static long MaxOfDepletedExcitedNaquadahFuelRod = MachineConfig.artificial_star.euEveryDepletedExcitedNaquadahFuelRod;
+    public static long MaxOfEnhancementCore = MachineConfig.artificial_star.euEveryEnhancementCore;
     public static long MaxOfAntimatter = 3;
     public static long MaxOfAntimatterFuelRod = 1024;
     public static long MaxOfStrangeAnnihilationFuelRod = 32768;
-    public static boolean configEnableDefaultRender = MainConfig.machine.artificial_star.enableRenderDefaultArtificialStar;
-    public static final ItemStack TST_PROTO = GTModHandler
-        .getModItem(ModList.TwistSpaceTechnology.ID, "MetaItem01", 1, 17);
-    private static final ItemStack DEPLETED_ROD = GTNLItemList.DepletedExcitedNaquadahFuelRod.get(1);
-    private static final ItemStack ENHANCEMENT_CORE = GTNLItemList.EnhancementCore.get(1);
-    private static final ItemStack TST_ANTIMATTER = ModList.TwistSpaceTechnology.isModLoaded()
-        ? GTModHandler.getModItem(ModList.TwistSpaceTechnology.ID, "MetaItem01", 1, 14)
-        : null;
-    private static final ItemStack TST_FUEL_ROD = ModList.TwistSpaceTechnology.isModLoaded()
-        ? GTModHandler.getModItem(ModList.TwistSpaceTechnology.ID, "MetaItem01", 1, 16)
-        : null;
-    private static final ItemStack TST_STRANGE_ROD = ModList.TwistSpaceTechnology.isModLoaded()
-        ? GTModHandler.getModItem(ModList.TwistSpaceTechnology.ID, "MetaItem01", 1, 29)
-        : null;
+    public static boolean configEnableDefaultRender = MachineConfig.artificial_star.enableRenderDefaultArtificialStar;
+    public static final ItemStack TST_PROTO = ModsItemlist.TwistSpaceStellarStructuralFrameMaterial.get(1);
+    public static final ItemStack DEPLETED_ROD = GTNLItemList.DepletedExcitedNaquadahFuelRod.get(1);
+    public static final ItemStack ENHANCEMENT_CORE = GTNLItemList.EnhancementCore.get(1);
+    public static final ItemStack TST_ANTIMATTER = ModsItemlist.TwistSpaceAntimatter.get(1);
+    public static final ItemStack TST_FUEL_ROD = ModsItemlist.TwistSpaceAntimatterFuelRod.get(1);
+    public static final ItemStack TST_STRANGE_ROD = ModsItemlist.TwistSpaceStrangeAnnihilationFuelRod.get(1);
 
     public String ownerName;
     public UUID ownerUUID;
@@ -304,7 +297,7 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
                     BigInteger.valueOf(MaxOfEnhancementCore)
                         .multiply(BigInteger.valueOf(size)));
                 matched = true;
-            } else if (ModList.TwistSpaceTechnology.isModLoaded()) {
+            } else {
                 if (GTUtility.areStacksEqual(items, TST_ANTIMATTER, true)) {
                     currentOutputEU = currentOutputEU.add(
                         BigInteger.valueOf(MaxOfAntimatter)
@@ -344,26 +337,26 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
 
         BigDecimal eu = new BigDecimal(currentOutputEU).multiply(BigDecimal.valueOf(outputMultiplier))
             .multiply(BigDecimal.valueOf((rewardContinuous + 100d) / 100d))
-            .multiply(new BigDecimal(Utils.INTEGER_MAX_VALUE));
+            .multiply(new BigDecimal(MathUtils.INTEGER_MAX_VALUE));
 
         BigInteger result = eu.toBigInteger();
         if (!addEUToGlobalEnergyMap(ownerUUID, result)) {
             return CheckRecipeResultRegistry.INTERNAL_ERROR;
         }
 
-        mMaxProgresstime = (int) (20 * MainConfig.machine.artificial_star.secondsOfArtificialStarProgressCycleTime);
+        mMaxProgresstime = (int) (20 * MachineConfig.artificial_star.secondsOfArtificialStarProgressCycleTime);
         if (recoveryChance == 1000) {
             if (recoveryAmount > 0) {
                 // mOutputItems = getRecovers(recoveryAmount);
             }
-            if (recoveryAmountTST > 0 && ModList.TwistSpaceTechnology.isModLoaded()) {
+            if (recoveryAmountTST > 0) {
                 mOutputItems = getRecoversTST(recoveryAmountTST);
             }
         } else if (XSTR.XSTR_INSTANCE.nextInt(1000) < recoveryChance) {
             if (recoveryAmount > 0) {
                 // mOutputItems = getRecovers(recoveryAmount);
             }
-            if (recoveryAmountTST > 0 && ModList.TwistSpaceTechnology.isModLoaded()) {
+            if (recoveryAmountTST > 0) {
                 mOutputItems = getRecoversTST(recoveryAmountTST);
             }
         }
@@ -378,9 +371,9 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
     }
 
     public ItemStack[] getRecoversTST(long amount) {
-        if (amount <= 0 || !ModList.TwistSpaceTechnology.isModLoaded()) return new ItemStack[0];
+        if (amount <= 0 || TST_PROTO == null) return new ItemStack[0];
 
-        List<ItemStack> list = new ArrayList<>();
+        List<ItemStack> list = new ObjectArrayList<>();
 
         long fullStacks = amount / Integer.MAX_VALUE;
         int remainder = (int) (amount % Integer.MAX_VALUE);
@@ -464,49 +457,14 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
     }
 
     @Override
+    public TooltipStats getTooltipStats() {
+        return null;
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.6"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.7"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.8"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.tooltip.9"))
-            .beginStructureBlock(121, 112, 109, false)
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.output_coefficient"))
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.actual_output"))
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.recovery_chance"))
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.fuel_consumption"))
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.continuous_bonus"))
-            .addStructureInfo(
-                StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.max_continuous_bonus"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.1"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.2"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.3"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.4"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.5"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.6"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.7"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.8"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.9"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.10"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.11"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.12"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.13"))
-            .addStructureInfo(StatCollector.translateToLocal("gtnl.machine.real_artificial_star.structure.14"))
-            .addSubChannelUsage(GTStructureChannels.EOH_COMPRESSION)
-            .addSubChannelUsage(GTStructureChannels.EOH_DILATION)
-            .addSubChannelUsage(GTStructureChannels.EOH_STABILISATION)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -572,7 +530,7 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
                     + " * 2147483647"
                     + EnumChatFormatting.RESET
                     + " EU / "
-                    + MainConfig.machine.artificial_star.secondsOfArtificialStarProgressCycleTime
+                    + MachineConfig.artificial_star.secondsOfArtificialStarProgressCycleTime
                     + " s");
         }
     }

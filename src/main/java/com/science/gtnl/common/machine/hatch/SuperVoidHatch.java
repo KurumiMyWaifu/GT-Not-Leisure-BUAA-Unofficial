@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.hatch;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -20,26 +19,21 @@ import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.gtnewhorizons.modularui.api.math.Pos2d;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.Scrollable;
-import com.gtnewhorizons.modularui.common.widget.SlotGroup;
 import com.science.gtnl.api.IFluidsLockable;
-import com.science.gtnl.common.gui.modularui.SuperVoidHatchGui;
-import com.science.gtnl.utils.item.ItemUtils;
-import com.science.gtnl.utils.machine.FluidsLockWidget;
+import com.science.gtnl.common.gui.modularui.hatch.SuperVoidHatchGui;
 
 import gregtech.api.interfaces.ITexture;
-import gregtech.api.interfaces.modularui.IAddGregtechLogo;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechDeviceInformation;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchVoid;
 import gregtech.api.util.GTUtility;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable, IAddGregtechLogo {
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
+public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable {
 
     public String[] lockedFluidNames = new String[100];
 
@@ -49,6 +43,18 @@ public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable, IAd
 
     public SuperVoidHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.super_void_hatch.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override
@@ -179,7 +185,7 @@ public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable, IAd
 
     @Override
     public String[] getInfoData() {
-        List<String> info = new ArrayList<>();
+        List<String> info = new ObjectArrayList<>();
 
         info.add(
             EnumChatFormatting.BLUE + IGregTechDeviceInformation.encode("GT5U.infodata.hatch.output")
@@ -220,35 +226,6 @@ public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable, IAd
     }
 
     @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after SuperVoidHatch mui2 rollout is complete.
-        Scrollable scrollable = new Scrollable().setVerticalScroll();
-        SlotGroup slotGroup = new SlotGroup();
-
-        int x = 0, y = 0;
-        for (int i = 0; i < 100; i++) {
-            FluidsLockWidget widget = new FluidsLockWidget(this, i);
-            widget.setPos(new Pos2d(x * 18, y * 18))
-                .setBackground(getGUITextureSet().getFluidSlot());
-            slotGroup.addChild(widget);
-
-            if (++x == 10) {
-                x = 0;
-                y++;
-            }
-        }
-
-        scrollable.widget(slotGroup);
-
-        builder.widget(
-            scrollable.setSize(18 * 10 + 4, 72)
-                .setPos(20, 9));
-
-        addGregTechLogo(builder);
-    }
-
-    @Override
     public int getGUIWidth() {
         return 220;
     }
@@ -265,15 +242,5 @@ public class SuperVoidHatch extends MTEHatchVoid implements IFluidsLockable, IAd
             }
         }
         return sb.toString();
-    }
-
-    @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after SuperVoidHatch mui2 rollout is complete.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(195, 83));
     }
 }

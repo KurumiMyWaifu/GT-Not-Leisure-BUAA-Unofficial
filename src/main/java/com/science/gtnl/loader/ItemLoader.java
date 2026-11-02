@@ -1,11 +1,10 @@
 package com.science.gtnl.loader;
 
+import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static com.science.gtnl.common.item.items.SuspiciousStew.registerFlower;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -15,7 +14,10 @@ import net.minecraft.util.StatCollector;
 import net.minecraftforge.fluids.FluidRegistry;
 
 import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
-import com.science.gtnl.client.GTNLCreativeTabs;
+import com.gtnllib.client.tooltip.AnimatedTooltipHandler;
+import com.gtnllib.registry.Registrar;
+import com.science.gtnl.ScienceNotLeisure;
+import com.science.gtnl.common.item.GTNLCreativeTabs;
 import com.science.gtnl.common.item.GTNLItemRecord;
 import com.science.gtnl.common.item.ItemInfinityCell;
 import com.science.gtnl.common.item.ItemInfinityItem;
@@ -26,6 +28,7 @@ import com.science.gtnl.common.item.items.DireCraftPattern;
 import com.science.gtnl.common.item.items.ElectricProspectorTool;
 import com.science.gtnl.common.item.items.FakeItemSiren;
 import com.science.gtnl.common.item.items.GTNLItemBucket;
+import com.science.gtnl.common.item.items.ItemMEMiniPortableTerminal;
 import com.science.gtnl.common.item.items.ItemPartActiveFormationPlane;
 import com.science.gtnl.common.item.items.ItemPartBeamFormer;
 import com.science.gtnl.common.item.items.ItemPartDenseEnergyCell;
@@ -35,11 +38,14 @@ import com.science.gtnl.common.item.items.ItemPartMECellDock;
 import com.science.gtnl.common.item.items.ItemPartSuperDenseEnergyCell;
 import com.science.gtnl.common.item.items.ItemPartSuperDualInterface;
 import com.science.gtnl.common.item.items.ItemPartSuperInterface;
+import com.science.gtnl.common.item.items.ItemPartUniversalBus;
+import com.science.gtnl.common.item.items.ItemYogSothothTerminal;
 import com.science.gtnl.common.item.items.KFCFamily;
 import com.science.gtnl.common.item.items.NetherTeleporter;
 import com.science.gtnl.common.item.items.NullPointerException;
 import com.science.gtnl.common.item.items.PortableCellWorkbenchItem;
 import com.science.gtnl.common.item.items.PortableItem;
+import com.science.gtnl.common.item.items.PortalGun;
 import com.science.gtnl.common.item.items.SlimeSaddle;
 import com.science.gtnl.common.item.items.SteamRocket;
 import com.science.gtnl.common.item.items.Stick;
@@ -48,7 +54,10 @@ import com.science.gtnl.common.item.items.TestItem;
 import com.science.gtnl.common.item.items.TimeStopPocketWatch;
 import com.science.gtnl.common.item.items.TwilightSword;
 import com.science.gtnl.common.item.items.VeinMiningPickaxe;
+import com.science.gtnl.common.item.items.WirelessFrequencyCard;
 import com.science.gtnl.common.item.items.WirelessUpgradeChip;
+import com.science.gtnl.common.item.items.armor.CelestweaveArmor;
+import com.science.gtnl.common.item.items.armor.SoulCardboardArmor;
 import com.science.gtnl.common.item.items.bauble.DraconicArmorProjectionBauble;
 import com.science.gtnl.common.item.items.bauble.DraconicArmorProjectionType;
 import com.science.gtnl.common.item.items.bauble.LuckyHorseshoe;
@@ -57,10 +66,14 @@ import com.science.gtnl.common.item.items.bauble.RejectionRing;
 import com.science.gtnl.common.item.items.bauble.RoyalGel;
 import com.science.gtnl.common.item.items.bauble.SatietyRing;
 import com.science.gtnl.common.item.items.bauble.SuperReachRing;
+import com.science.gtnl.common.item.items.equipment.CelestweaveModuleItem;
+import com.science.gtnl.common.item.items.equipment.ElectromagneticRailgun;
+import com.science.gtnl.common.item.items.equipment.EnergyModuleItem;
+import com.science.gtnl.common.item.items.equipment.RailgunModuleItem;
 import com.science.gtnl.common.item.items.fuelRod.FuelRod;
 import com.science.gtnl.common.item.items.fuelRod.FuelRodDepleted;
 import com.science.gtnl.utils.enums.GTNLItemList;
-import com.science.gtnl.utils.text.AnimatedTooltipHandler;
+import com.science.gtnl.utils.enums.ModsItemlist;
 
 import appeng.api.storage.StorageChannel;
 import cpw.mods.fml.common.registry.GameRegistry;
@@ -68,22 +81,62 @@ import gregtech.api.GregTechAPI;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Mods;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.common.render.items.InfinityMetaItemRenderer;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class ItemLoader {
 
-    public static SteamRocket steamRocket = new SteamRocket();
-    public static NullPointerException nullPointerException = new NullPointerException();
-    public static FakeItemSiren fakeItemSiren = new FakeItemSiren();
-    public static NetherTeleporter netherTeleporter = new NetherTeleporter();
-    public static TestItem testItem = new TestItem();
-    public static DebugItem debugItem = new DebugItem();
-    public static KFCFamily KFCFamily = new KFCFamily();
-    public static TwilightSword twilightSword = new TwilightSword();
+    // Must stay the first field: the item fields below register through it while the class initializes.
+    public static final Registrar ITEMS = new Registrar(
+        "gtnl.",
+        ScienceNotLeisure.RESOURCE_ROOT_ID,
+        GTNLCreativeTabs.GTNotLeisureItem);
+
+    public static SteamRocket steamRocket = ITEMS.item("steam_rocket", new SteamRocket())
+        .texture("arrow")
+        .bind(GTNLItemList.SteamRocket::set)
+        .register();
+    public static NullPointerException nullPointerException = ITEMS
+        .item("null_pointer_exception", new NullPointerException())
+        .bind(GTNLItemList.NullPointerException::set)
+        .register();
+    public static FakeItemSiren fakeItemSiren = ITEMS.item("fake_item_siren", new FakeItemSiren())
+        .bind(GTNLItemList.FakeItemSiren::set)
+        .register();
+    public static NetherTeleporter netherTeleporter = ITEMS.item("nether_teleporter", new NetherTeleporter())
+        .bind(GTNLItemList.NetherTeleporter::set)
+        .register();
+    public static TestItem testItem = ITEMS.item("test_item", new TestItem())
+        .bind(GTNLItemList.TestItem::set)
+        .register();
+    public static DebugItem debugItem = ITEMS.item("debug_item", new DebugItem())
+        .bind(GTNLItemList.DebugItem::set)
+        .register();
+    public static KFCFamily KFCFamily = ITEMS.item("kfc_family", new KFCFamily())
+        .bind(GTNLItemList.KFCFamily::set)
+        .register();
+    public static TwilightSword twilightSword = ITEMS.item("twilight_sword", new TwilightSword())
+        .bind(GTNLItemList.TwilightSword::set)
+        .register();
+    public static ElectromagneticRailgun electromagneticRailgun = ITEMS
+        .item("electromagnetic_railgun", new ElectromagneticRailgun())
+        .bind(GTNLItemList.ElectromagneticRailgun::set)
+        .register();
+    public static RailgunModuleItem railgunModule = new RailgunModuleItem();
+    public static EnergyModuleItem energyModule = new EnergyModuleItem();
+    public static CelestweaveModuleItem celestweaveModule = new CelestweaveModuleItem();
+    public static CelestweaveArmor celestweaveOculus = new CelestweaveArmor(0, GTNLItemList.CelestweaveOculus);
+    public static CelestweaveArmor celestweaveCore = new CelestweaveArmor(1, GTNLItemList.CelestweaveCore);
+    public static CelestweaveArmor celestweaveConduit = new CelestweaveArmor(2, GTNLItemList.CelestweaveConduit);
+    public static CelestweaveArmor celestweaveStride = new CelestweaveArmor(3, GTNLItemList.CelestweaveStride);
     public static CircuitIntegratedPlus circuitIntegratedPlus = new CircuitIntegratedPlus();
-    public static TimeStopPocketWatch timeStopPocketWatch = new TimeStopPocketWatch();
+    public static TimeStopPocketWatch timeStopPocketWatch = ITEMS
+        .item("time_stop_pocket_watch", new TimeStopPocketWatch())
+        .bind(GTNLItemList.TimeStopPocketWatch::set)
+        .register();
+    public static PortalGun portalGun = new PortalGun("portal_gun", GTNLItemList.PortalGun);
+    public static PortalGun portalGunC137 = new PortalGun("portal_gun_c137", GTNLItemList.PortalGunC137);
     public static Item recordSus = new GTNLItemRecord("sus");
 
     public static ItemInfinityItem infinityTorch = new ItemInfinityItem(
@@ -123,7 +176,7 @@ public class ItemLoader {
     public static ItemInfinityItem superstrongSponge = new ItemInfinityItem(
         "superstrong_sponge",
         "gtnl.superstrong_sponge",
-        (Block) null,
+        null,
         null,
         false,
         GTNLItemList.SuperstrongSponge);
@@ -145,24 +198,80 @@ public class ItemLoader {
     public static GTNLItemBucket honeyBucket;
     public static GTNLItemBucket shimmerBucket;
 
-    public static ItemInfinityCell infinityCell = new ItemInfinityCell();
-    public static DireCraftPattern direCraftPattern = new DireCraftPattern();
+    public static ItemInfinityCell infinityCell = ITEMS.item("infinity_cell", new ItemInfinityCell())
+        .register();
+    public static DireCraftPattern direCraftPattern = ITEMS.item("dire_craft_pattern", new DireCraftPattern())
+        .bind(GTNLItemList.DireCraftPattern::set)
+        .register();
 
-    public static WirelessUpgradeChip wirelessUpgradeChip = new WirelessUpgradeChip();
-    public static SuspiciousStew suspiciousStew = new SuspiciousStew();
+    public static WirelessUpgradeChip wirelessUpgradeChip = ITEMS
+        .item("wireless_upgrade_chip", new WirelessUpgradeChip())
+        .bind(GTNLItemList.WirelessUpgradeChip::set)
+        .register();
+    public static WirelessFrequencyCard wirelessFrequencyCard = ITEMS
+        .item("wireless_frequency_card", new WirelessFrequencyCard())
+        .bind(GTNLItemList.WirelessFrequencyCard::set)
+        .register();
+    public static ItemMEMiniPortableTerminal meMiniPortableTerminal = ITEMS
+        .item("me_mini_portable_terminal", new ItemMEMiniPortableTerminal())
+        .bind(GTNLItemList.MEMiniPortableTerminal::set)
+        .register();
+    public static ItemYogSothothTerminal yogSothothTerminal = ITEMS
+        .item("yog_sothoth_terminal", new ItemYogSothothTerminal())
+        .bind(GTNLItemList.YogSothothTerminal::set)
+        .register();
+    public static SuspiciousStew suspiciousStew = ITEMS.item("suspicious_stew", new SuspiciousStew())
+        .bind(GTNLItemList.SuspiciousStew::set)
+        .register();
     public static PortableItem portableItem = new PortableItem();
-    public static PortableCellWorkbenchItem portableCellWorkbenchItem = new PortableCellWorkbenchItem();
-    public static ElectricProspectorTool electricProspectorTool = new ElectricProspectorTool();
+    public static PortableCellWorkbenchItem portableCellWorkbenchItem = ITEMS
+        .item("portable_cell_workbench", new PortableCellWorkbenchItem())
+        .bind(GTNLItemList.PortableCellWorkbench::set)
+        .register();
+    public static ElectricProspectorTool electricProspectorTool = ITEMS
+        .item("electric_prospector_tool", new ElectricProspectorTool())
+        .register();
 
-    public static SlimeSaddle slimeSaddle = new SlimeSaddle();
+    public static SlimeSaddle slimeSaddle = ITEMS.item("slime_saddle", new SlimeSaddle())
+        .bind(GTNLItemList.SlimeSaddle::set)
+        .register();
 
-    public static SuperReachRing superReachRing = new SuperReachRing();
-    public static SatietyRing satietyRing = new SatietyRing();
-    public static RejectionRing rejectionRing = new RejectionRing();
+    public static SoulCardboardArmor soulCardboardHelmet = new SoulCardboardArmor(
+        "soul_cardboard_helmet",
+        0,
+        GTNLItemList.SoulCardboardHelmet);
+    public static SoulCardboardArmor soulCardboardChestplate = new SoulCardboardArmor(
+        "soul_cardboard_chestplate",
+        1,
+        GTNLItemList.SoulCardboardChestplate);
+    public static SoulCardboardArmor soulCardboardLeggings = new SoulCardboardArmor(
+        "soul_cardboard_leggings",
+        2,
+        GTNLItemList.SoulCardboardLeggings);
+    public static SoulCardboardArmor soulCardboardBoots = new SoulCardboardArmor(
+        "soul_cardboard_boots",
+        3,
+        GTNLItemList.SoulCardboardBoots);
 
-    public static PhysicsCape physicsCape = new PhysicsCape();
-    public static RoyalGel royalGel = new RoyalGel();
-    public static LuckyHorseshoe luckyHorseshoe = new LuckyHorseshoe();
+    public static SuperReachRing superReachRing = ITEMS.item("super_reach_ring", new SuperReachRing())
+        .bind(GTNLItemList.SuperReachRing::set)
+        .register();
+    public static SatietyRing satietyRing = ITEMS.item("satiety_ring", new SatietyRing())
+        .bind(GTNLItemList.SatietyRing::set)
+        .register();
+    public static RejectionRing rejectionRing = ITEMS.item("rejection_ring", new RejectionRing())
+        .bind(GTNLItemList.RejectionRing::set)
+        .register();
+
+    public static PhysicsCape physicsCape = ITEMS.item("physics_cape", new PhysicsCape())
+        .bind(GTNLItemList.PhysicsCape::set)
+        .register();
+    public static RoyalGel royalGel = ITEMS.item("royal_gel", new RoyalGel())
+        .bind(GTNLItemList.RoyalGel::set)
+        .register();
+    public static LuckyHorseshoe luckyHorseshoe = ITEMS.item("lucky_horseshoe", new LuckyHorseshoe())
+        .bind(GTNLItemList.LuckyHorseshoe::set)
+        .register();
     public static DraconicArmorProjectionBauble wyvernProjectionNecklace = new DraconicArmorProjectionBauble(
         "wyvern_projection_necklace",
         "gtnl.wyvern_projection_necklace",
@@ -174,19 +283,57 @@ public class ItemLoader {
         DraconicArmorProjectionType.DRACONIC,
         GTNLItemList.DraconicProjectionNecklace);
 
-    public static Stick stick = new Stick();
+    public static Stick stick = ITEMS.item("stick", new Stick())
+        .bind(GTNLItemList.Stick::set)
+        .register();
 
-    public static VeinMiningPickaxe veinMiningPickaxe = new VeinMiningPickaxe();
+    public static VeinMiningPickaxe veinMiningPickaxe = ITEMS.item("vein_mining_pickaxe", new VeinMiningPickaxe())
+        .bind(GTNLItemList.VeinMiningPickaxe::set)
+        .register();
 
-    public static ItemPartSuperInterface superInterface = new ItemPartSuperInterface();
-    public static ItemPartSuperDualInterface superDualInterface = new ItemPartSuperDualInterface();
-    public static ItemPartActiveFormationPlane activeFormationPlane = new ItemPartActiveFormationPlane();
-    public static ItemPartBeamFormer beamFormer = new ItemPartBeamFormer();
-    public static ItemPartMECellDock meCellDock = new ItemPartMECellDock();
-    public static ItemPartEnergyAcceptor energyAcceptor = new ItemPartEnergyAcceptor();
+    public static ItemPartSuperInterface superInterface = ITEMS
+        .item("part_super_interface", new ItemPartSuperInterface())
+        .texture(RESOURCE_ROOT_ID + ":super_interface")
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.PartSuperInterface::set)
+        .register();
+    public static ItemPartSuperDualInterface superDualInterface = ITEMS
+        .item("part_super_dual_interface", new ItemPartSuperDualInterface())
+        .texture(RESOURCE_ROOT_ID + ":super_dual_interface")
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.PartSuperDualInterface::set)
+        .register();
+    public static ItemPartActiveFormationPlane activeFormationPlane = ITEMS
+        .item("part_active_formation_plane", new ItemPartActiveFormationPlane())
+        .texture(Mods.AppliedEnergistics2.ID + ":ItemPart.FormationPlane")
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.PartActiveFormationPlane::set)
+        .register();
+    public static ItemPartBeamFormer beamFormer = ITEMS.item("part_beam_former", new ItemPartBeamFormer())
+        .texture(RESOURCE_ROOT_ID + ":part/beam_former_base")
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.PartBeamFormer::set)
+        .register();
+    public static ItemPartMECellDock meCellDock = ITEMS.item("me_cell_dock", new ItemPartMECellDock())
+        .texture(RESOURCE_ROOT_ID + ":part/cell_dock")
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.MECellDock::set)
+        .register();
+    public static ItemPartEnergyAcceptor energyAcceptor = ITEMS
+        .item("part_energy_acceptor", new ItemPartEnergyAcceptor())
+        .noTexture()
+        .tab(GTNLCreativeTabs.GTNotLeisureBlock)
+        .bind(GTNLItemList.PartEnergyAcceptor::set)
+        .register();
     public static ItemPartEnergyCell energyCell = new ItemPartEnergyCell();
     public static ItemPartDenseEnergyCell denseEnergyCell = new ItemPartDenseEnergyCell();
     public static ItemPartSuperDenseEnergyCell superDenseEnergyCell = new ItemPartSuperDenseEnergyCell();
+    public static ItemPartUniversalBus universalStorageBus = new ItemPartUniversalBus(
+        ItemPartUniversalBus.BusType.STORAGE);
+    public static ItemPartUniversalBus universalImportBus = new ItemPartUniversalBus(
+        ItemPartUniversalBus.BusType.IMPORT);
+    public static ItemPartUniversalBus universalExportBus = new ItemPartUniversalBus(
+        ItemPartUniversalBus.BusType.EXPORT);
 
     public static ItemStack infinityDyeCell;
     public static ItemStack infinityDyeFluidCell;
@@ -217,7 +364,7 @@ public class ItemLoader {
             "infinity_dye_fluid_cell",
             subDyeFluid);
 
-        List<ItemInfinityCell.SubItem> infinityStoneCell = new ArrayList<>();
+        List<ItemInfinityCell.SubItem> infinityStoneCell = new ObjectArrayList<>();
         infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(Blocks.stone));
         infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(Blocks.cobblestone));
         infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(Blocks.netherrack));
@@ -234,26 +381,17 @@ public class ItemLoader {
         infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(new ItemStack(GregTechAPI.sBlockStones, 1, 9)));
 
         if (Mods.EtFuturumRequiem.isModLoaded()) {
-            infinityStoneCell.add(
-                ItemInfinityCell.SubItem
-                    .getInstance(GTModHandler.getModItem(Mods.EtFuturumRequiem.ID, "deepslate", 1)));
-            infinityStoneCell.add(
-                ItemInfinityCell.SubItem
-                    .getInstance(GTModHandler.getModItem(Mods.EtFuturumRequiem.ID, "cobbled_deepslate", 1)));
-            infinityStoneCell.add(
-                ItemInfinityCell.SubItem
-                    .getInstance(GTModHandler.getModItem(Mods.EtFuturumRequiem.ID, "blackstone", 1)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.EtFuturumRequiemDeepslate.get(1)));
+            infinityStoneCell
+                .add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.EtFuturumRequiemCobbledDeepslate.get(1)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.EtFuturumRequiemBlackstone.get(1)));
         }
 
         if (Mods.Botania.isModLoaded()) {
-            infinityStoneCell
-                .add(ItemInfinityCell.SubItem.getInstance(GTModHandler.getModItem(Mods.Botania.ID, "stone", 1, 0)));
-            infinityStoneCell
-                .add(ItemInfinityCell.SubItem.getInstance(GTModHandler.getModItem(Mods.Botania.ID, "stone", 1, 1)));
-            infinityStoneCell
-                .add(ItemInfinityCell.SubItem.getInstance(GTModHandler.getModItem(Mods.Botania.ID, "stone", 1, 2)));
-            infinityStoneCell
-                .add(ItemInfinityCell.SubItem.getInstance(GTModHandler.getModItem(Mods.Botania.ID, "stone", 1, 3)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.BotaniaAndesite.get(1)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.BotaniaBasalt.get(1)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.BotaniaDiorite.get(1)));
+            infinityStoneCell.add(ItemInfinityCell.SubItem.getInstance(ModsItemlist.BotaniaGranite.get(1)));
         }
 
         ItemLoader.infinityStoneCell = ItemInfinityCell.getSubItem(
@@ -620,5 +758,23 @@ public class ItemLoader {
         GTOreDictUnificator.addToBlacklist(GTNLItemList.BasicCircuit.get(1));
         GTOreDictUnificator.addToBlacklist(GTNLItemList.AdvancedCircuit.get(1));
         GTOreDictUnificator.addToBlacklist(GTNLItemList.EliteCircuit.get(1));
+    }
+
+    public static class Card implements IContentLoader {
+
+        @Override
+        public String name() {
+            return "items";
+        }
+
+        @Override
+        public void preInit() {
+            registry();
+        }
+
+        @Override
+        public void clientInit() {
+            AnimatedTooltipHandler.addTooltipStackResolver(Stick::tooltipStack);
+        }
     }
 }

@@ -16,6 +16,7 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.utils.StructureUtils;
 
@@ -192,13 +193,8 @@ public class SteamGateAssembler extends SteamMultiMachineBase<SteamGateAssembler
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(getMachineType())
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_gate_assembler.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_gate_assembler.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_gate_assembler.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.steam_gate_assembler.tooltip.3"))
-            .beginStructureBlock(21, 20, 21, true)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

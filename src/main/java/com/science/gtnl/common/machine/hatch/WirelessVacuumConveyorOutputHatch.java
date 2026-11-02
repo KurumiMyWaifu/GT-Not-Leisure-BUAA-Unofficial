@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.hatch;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -16,6 +15,7 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import gregtech.api.enums.ItemList;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.util.GTUtil;
@@ -23,7 +23,10 @@ import gregtech.common.tileentities.machines.multi.nanochip.factory.VacuumFactor
 import gregtech.common.tileentities.machines.multi.nanochip.factory.VacuumFactoryGrid;
 import gregtech.common.tileentities.machines.multi.nanochip.hatches.MTEHatchVacuumConveyorOutput;
 import gregtech.common.tileentities.machines.multi.nanochip.util.CircuitComponentPacket;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class WirelessVacuumConveyorOutputHatch extends MTEHatchVacuumConveyorOutput {
 
     public static final String DATA_STICK_TYPE = "gtnlWirelessVacuumConveyorOutput";
@@ -44,6 +47,18 @@ public class WirelessVacuumConveyorOutputHatch extends MTEHatchVacuumConveyorOut
 
     public WirelessVacuumConveyorOutputHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.wireless_vacuum_conveyor.output.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override
@@ -155,7 +170,7 @@ public class WirelessVacuumConveyorOutputHatch extends MTEHatchVacuumConveyorOut
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> info = new ArrayList<>(Arrays.asList(super.getInfoData()));
+        ObjectArrayList<String> info = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
         if (targetSet) {
             info.add(
                 StatCollector.translateToLocalFormatted(

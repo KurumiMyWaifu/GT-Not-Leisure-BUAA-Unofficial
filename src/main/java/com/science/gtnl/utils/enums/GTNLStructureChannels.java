@@ -1,8 +1,12 @@
 package com.science.gtnl.utils.enums;
 
+import java.util.Locale;
+
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.StatCollector;
 
 import com.gtnewhorizon.structurelib.StructureLibAPI;
+import com.science.gtnl.ScienceNotLeisure;
 
 import gregtech.api.structure.IStructureChannels;
 
@@ -21,17 +25,14 @@ import gregtech.api.structure.IStructureChannels;
 public enum GTNLStructureChannels implements IStructureChannels {
 
     // Order of enum constants does not matter
-    STRUCTURE_RENDER("structure_render", "Enable Machine Render"),
-    COMPONENT_ASSEMBLY_LINE_CASING("component_casing", "Component Assembly Line Casing Tier")
+    STRUCTURE_RENDER("structure_render")
     //
     ;
 
     private final String channel;
-    private final String defaultTooltip;
 
-    GTNLStructureChannels(String aChannel, String defaultTooltip) {
+    GTNLStructureChannels(String aChannel) {
         channel = aChannel;
-        this.defaultTooltip = defaultTooltip;
     }
 
     @Override
@@ -39,22 +40,23 @@ public enum GTNLStructureChannels implements IStructureChannels {
         return channel;
     }
 
+    // Keyed by constant name, not channel id: several constants share the "casing" channel with different names
     @Override
     public String getDefaultTooltip() {
-        return defaultTooltip;
+        return StatCollector.translateToLocal("channels.gtnl.subchannel." + name().toLowerCase(Locale.ROOT));
     }
 
     @Override
     public void registerAsIndicator(ItemStack indicator, int channelValue) {
-        StructureLibAPI.registerChannelItem(get(), ModList.ScienceNotLeisure.ID, channelValue, indicator);
+        StructureLibAPI.registerChannelItem(get(), ScienceNotLeisure.MODID, channelValue, indicator);
     }
 
     public static void register() {
         for (GTNLStructureChannels value : values()) {
             StructureLibAPI.registerChannelDescription(
                 value.get(),
-                ModList.ScienceNotLeisure.ID,
-                "channels." + ModList.ScienceNotLeisure.ID + "." + value.get());
+                ScienceNotLeisure.MODID,
+                "channels." + ScienceNotLeisure.MODID + "." + value.get());
         }
     }
 }

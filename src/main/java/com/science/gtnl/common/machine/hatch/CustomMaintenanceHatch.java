@@ -5,27 +5,19 @@ import static com.science.gtnl.utils.enums.BlockIcons.OVERLAY_FRONT_FULLAUTOMAIN
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
-import com.gtnewhorizons.modularui.api.math.Alignment;
-import com.gtnewhorizons.modularui.api.math.Color;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
-import com.gtnewhorizons.modularui.common.widget.textfield.TextFieldWidget;
 import com.science.gtnl.api.IConfigurationMaintenance;
-import com.science.gtnl.common.gui.modularui.CustomMaintenanceHatchGui;
-import com.science.gtnl.utils.item.ItemUtils;
+import com.science.gtnl.common.gui.modularui.hatch.CustomMaintenanceHatchGui;
 
-import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.interfaces.IDataCopyable;
 import gregtech.api.interfaces.ITexture;
-import gregtech.api.interfaces.modularui.IAddGregtechLogo;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatchMaintenance;
@@ -33,8 +25,9 @@ import gregtech.api.render.TextureFactory;
 import lombok.Getter;
 import lombok.Setter;
 
-public class CustomMaintenanceHatch extends MTEHatchMaintenance
-    implements IConfigurationMaintenance, IAddGregtechLogo, IDataCopyable {
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
+public class CustomMaintenanceHatch extends MTEHatchMaintenance implements IConfigurationMaintenance, IDataCopyable {
 
     public static final String COPIED_DATA_IDENTIFIER = "customMaintenanceHatch";
 
@@ -45,51 +38,58 @@ public class CustomMaintenanceHatch extends MTEHatchMaintenance
     @Setter
     public int mCleanroomTier;
     public String[] mDescription;
+    public final String nameKey;
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aCleanroomTier, int aTier) {
-        super(aID, aName, aNameRegional, aTier);
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aCleanroomTier, int aTier) {
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mCleanroomTier = aCleanroomTier;
         mMinConfigTime = 100;
         mMaxConfigTime = 100;
     }
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aCleanroomTier, int aTier,
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aCleanroomTier, int aTier,
         String[] aDescription) {
-        super(aID, aName, aNameRegional, aTier);
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mDescription = aDescription;
         mCleanroomTier = aCleanroomTier;
         mMinConfigTime = 100;
         mMaxConfigTime = 100;
     }
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aCleanroomTier, int aMinConfigTime,
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aCleanroomTier, int aMinConfigTime,
         int aMaxConfigTime, int aTier) {
-        super(aID, aName, aNameRegional, aTier);
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mCleanroomTier = aCleanroomTier;
         mMinConfigTime = aMinConfigTime;
         mMaxConfigTime = aMaxConfigTime;
     }
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aCleanroomTier, int aMinConfigTime,
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aCleanroomTier, int aMinConfigTime,
         int aMaxConfigTime, int aTier, String[] aDescription) {
-        super(aID, aName, aNameRegional, aTier);
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mDescription = aDescription;
         mCleanroomTier = aCleanroomTier;
         mMinConfigTime = aMinConfigTime;
         mMaxConfigTime = aMaxConfigTime;
     }
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aMinConfigTime, int aMaxConfigTime,
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aMinConfigTime, int aMaxConfigTime,
         int aTier) {
-        super(aID, aName, aNameRegional, aTier);
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mCleanroomTier = 0;
         mMinConfigTime = aMinConfigTime;
         mMaxConfigTime = aMaxConfigTime;
     }
 
-    public CustomMaintenanceHatch(int aID, String aName, String aNameRegional, int aMinConfigTime, int aMaxConfigTime,
+    public CustomMaintenanceHatch(int aID, String aName, String aNameKey, int aMinConfigTime, int aMaxConfigTime,
         int aTier, String[] aDescription) {
-        super(aID, aName, aNameRegional, aTier);
+        super(aID, aName, aNameKey, aTier);
+        nameKey = aNameKey;
         mDescription = aDescription;
         mCleanroomTier = 0;
         mMinConfigTime = aMinConfigTime;
@@ -97,11 +97,24 @@ public class CustomMaintenanceHatch extends MTEHatchMaintenance
     }
 
     public CustomMaintenanceHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures,
-        int aMinConfigTime, int aMaxConfigTime) {
+        int aMinConfigTime, int aMaxConfigTime, String aNameKey) {
         super(aName, aTier, aDescription, aTextures, false);
         mMinConfigTime = aMinConfigTime;
         mMaxConfigTime = aMaxConfigTime;
         mDescription = aDescription;
+        nameKey = aNameKey;
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return nameKey;
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override
@@ -112,7 +125,8 @@ public class CustomMaintenanceHatch extends MTEHatchMaintenance
             this.mDescriptionArray,
             this.mTextures,
             this.mMinConfigTime,
-            this.mMaxConfigTime);
+            this.mMaxConfigTime,
+            this.nameKey);
     }
 
     @Override
@@ -185,38 +199,6 @@ public class CustomMaintenanceHatch extends MTEHatchMaintenance
     @Override
     public ModularPanel buildUI(PosGuiData data, PanelSyncManager syncManager, UISettings uiSettings) {
         return new CustomMaintenanceHatchGui(this).build(data, syncManager, uiSettings);
-    }
-
-    @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after CustomMaintenanceHatch mui2 rollout is complete.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(151, 62));
-    }
-
-    @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after CustomMaintenanceHatch mui2 rollout is complete.
-        if (isConfiguration()) {
-            builder.widget(
-                TextWidget.localised("gtnl.hatch.configuration_maintenance.processing_time")
-                    .setPos(49, 18)
-                    .setSize(81, 14))
-                .widget(
-                    new TextFieldWidget().setSetterInt(val -> mConfigTime = val)
-                        .setGetterInt(() -> mConfigTime)
-                        .setNumbers(mMinConfigTime, mMaxConfigTime)
-                        .setOnScrollNumbers(1, 2, 5)
-                        .setTextAlignment(Alignment.Center)
-                        .setTextColor(Color.WHITE.normal)
-                        .setSize(70, 18)
-                        .setPos(54, 36)
-                        .setBackground(GTUITextures.BACKGROUND_TEXT_FIELD));
-        }
     }
 
     @Override

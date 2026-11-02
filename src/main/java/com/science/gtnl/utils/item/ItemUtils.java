@@ -1,6 +1,5 @@
 package com.science.gtnl.utils.item;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -26,41 +25,34 @@ import net.minecraft.util.StringUtils;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.oredict.OreDictionary;
 
-import com.dreammaster.item.NHItemList;
 import com.google.common.collect.Iterables;
-import com.gtnewhorizons.modularui.api.drawable.UITexture;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.reavaritia.common.items.InfinityTotem;
 import com.science.gtnl.ScienceNotLeisure;
 import com.science.gtnl.common.packet.WirelessPickBlock;
+import com.science.gtnl.compat.backhand.BackhandCompat;
+import com.science.gtnl.compat.baubles.BaublesInventory;
+import com.science.gtnl.compat.newhorizons.NHCoreItem;
 import com.science.gtnl.utils.enums.GTNLItemList;
-import com.science.gtnl.utils.enums.ModList;
+import com.science.gtnl.utils.enums.ModsItemlist;
 
-import baubles.api.BaubleType;
-import baubles.api.BaublesApi;
-import cpw.mods.fml.common.Optional;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.util.GTModHandler;
+import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import gregtech.common.items.MetaGeneratedItem01;
 import gtPlusPlus.xmod.gregtech.api.enums.GregtechItemList;
+import gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.processing.MTEIsaMill;
+import gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.chemplant.MTEChemicalPlant;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class ItemUtils {
 
     public static final Random rand = new Random();
-
-    public static final UITexture PICTURE_CIRCULATION = UITexture
-        .fullImage(ModList.ScienceNotLeisure.ID, "gui/picture/circulation_");
-
-    public static final UITexture PICTURE_GTNL_LOGO = UITexture
-        .fullImage(ModList.ScienceNotLeisure.ID, "gui/picture/logo");
-
-    public static final UITexture PICTURE_GTNL_STEAM_LOGO = UITexture
-        .fullImage(ModList.ScienceNotLeisure.ID, "gui/picture/steam_logo");
 
     public static Materials[] TIER = { Materials.LV, Materials.MV, Materials.HV, Materials.EV, Materials.IV,
         Materials.LuV, Materials.ZPM, Materials.UV, Materials.UHV, Materials.UEV, Materials.UIV, Materials.UMV,
@@ -162,34 +154,24 @@ public class ItemUtils {
     public static ItemStack MOLD_MARSHMALLOW;
     public static ItemStack EXTRUDER_SHAPE_BOAT;
 
-    public static BaubleType UNIVERSAL_TYPE;
-
     static {
-        BaubleType type;
-        try {
-            type = Enum.valueOf(BaubleType.class, "UNIVERSAL");
-        } catch (Throwable ignored) {
-            type = BaubleType.RING;
-        }
-        UNIVERSAL_TYPE = type;
-
         if (WINDMILL_SHAFT == null) WINDMILL_SHAFT = GregtechItemList.Shape_Extruder_WindmillShaft.get(1);
         if (MOLD_PELLET == null) MOLD_PELLET = GregtechItemList.Pellet_Mold.get(1);
-        if (Mods.NewHorizonsCoreMod.isModLoaded()) initNHItems();
+        initNHItems();
     }
 
-    @Optional.Method(modid = "dreamcraft")
     public static void initNHItems() {
-        if (MOLD_HELMET == null) MOLD_HELMET = NHItemList.MoldHelmet.get(1);
-        if (MOLD_CHESTPLATE == null) MOLD_CHESTPLATE = NHItemList.MoldChestplate.get(1);
-        if (MOLD_LEGGINGS == null) MOLD_LEGGINGS = NHItemList.MoldLeggings.get(1);
-        if (MOLD_BOOTS == null) MOLD_BOOTS = NHItemList.MoldBoots.get(1);
-        if (MOLD_MARSHMALLOW == null) MOLD_MARSHMALLOW = NHItemList.MarshmallowFormMold.get(1);
-        if (EXTRUDER_SHAPE_BOAT == null) EXTRUDER_SHAPE_BOAT = NHItemList.ExtruderShapeBoat.get(1);
+        if (MOLD_HELMET == null) MOLD_HELMET = NHCoreItem.MoldHelmet.get(1, null);
+        if (MOLD_CHESTPLATE == null) MOLD_CHESTPLATE = NHCoreItem.MoldChestplate.get(1, null);
+        if (MOLD_LEGGINGS == null) MOLD_LEGGINGS = NHCoreItem.MoldLeggings.get(1, null);
+        if (MOLD_BOOTS == null) MOLD_BOOTS = NHCoreItem.MoldBoots.get(1, null);
+        if (MOLD_MARSHMALLOW == null) MOLD_MARSHMALLOW = NHCoreItem.MarshmallowFormMold.get(1, null);
+        if (EXTRUDER_SHAPE_BOAT == null) EXTRUDER_SHAPE_BOAT = NHCoreItem.ExtruderShapeBoat.get(1, null);
     }
 
     public static boolean isExtraItem(ItemStack stack) {
         if (stack == null) return false;
+        if (MTEChemicalPlant.isCatalyst(stack) || MTEIsaMill.isMillingBall(stack)) return true;
 
         Item item = stack.getItem();
         int meta = stack.getItemDamage();
@@ -239,15 +221,13 @@ public class ItemUtils {
             }
         }
 
-        if (Mods.Baubles.isModLoaded()) {
-            IInventory baublesInventory = BaublesApi.getBaubles(player);
-            if (baublesInventory != null) {
-                for (int i = 0; i < baublesInventory.getSizeInventory(); i++) {
-                    ItemStack baubleStack = baublesInventory.getStackInSlot(i);
-                    if (baubleStack != null && baubleStack.getItem() instanceof InfinityTotem && baubleStack == stack) {
-                        baublesInventory.setInventorySlotContents(i, null);
-                        return;
-                    }
+        IInventory baublesInventory = BaublesInventory.of(player);
+        if (baublesInventory != null) {
+            for (int i = 0; i < baublesInventory.getSizeInventory(); i++) {
+                ItemStack baubleStack = baublesInventory.getStackInSlot(i);
+                if (baubleStack != null && baubleStack.getItem() instanceof InfinityTotem && baubleStack == stack) {
+                    baublesInventory.setInventorySlotContents(i, null);
+                    return;
                 }
             }
         }
@@ -310,7 +290,7 @@ public class ItemUtils {
     }
 
     public static ItemStack getSpecialFlower(String typeName, int amount) {
-        ItemStack stack = GTModHandler.getModItem(Mods.Botania.ID, "specialFlower", amount);
+        ItemStack stack = ModsItemlist.BotaniaSpecialFlower.get(amount);
         if (stack == null) return null;
 
         NBTTagCompound tag = stack.getTagCompound();
@@ -324,7 +304,7 @@ public class ItemUtils {
     }
 
     public static ItemStack getSpecialFlower(String typeName) {
-        ItemStack stack = GTModHandler.getModItem(Mods.Botania.ID, "specialFlower", 1);
+        ItemStack stack = ModsItemlist.BotaniaSpecialFlower.get(1);
         if (stack == null) return null;
 
         NBTTagCompound tag = stack.getTagCompound();
@@ -443,7 +423,7 @@ public class ItemUtils {
         if (stack == null || count <= 0) return stack;
         if (!allowExisting && stack.isItemEnchanted()) return stack;
 
-        List<Enchantment> available = new ArrayList<>();
+        List<Enchantment> available = new ObjectArrayList<>();
         for (Enchantment ench : Enchantment.enchantmentsList) {
             if (ench != null && ench.canApply(stack)) {
                 available.add(ench);
@@ -479,13 +459,11 @@ public class ItemUtils {
         return book;
     }
 
-    public static final boolean isBackHandIns = Mods.Backhand.isModLoaded();
-
     public static boolean placeItemInHotbar(EntityPlayer player, ItemStack result, boolean isCreative, boolean useAE) {
         if (result == null) return false;
         Minecraft mc = Minecraft.getMinecraft();
         InventoryPlayer inv = player.inventory;
-        int backHandSlot = isBackHandIns ? 1 : 0;
+        int backHandSlot = BackhandCompat.offhandHotbarSlots();
 
         for (int i = 0; i < 9; i++) {
             ItemStack stack = inv.getStackInSlot(i);
@@ -664,5 +642,33 @@ public class ItemUtils {
             }
         }
         return skull;
+    }
+
+    public static ItemStack coolHotIngot(ItemStack instance) {
+        int[] oreIDs = OreDictionary.getOreIDs(instance);
+
+        for (int oreId : oreIDs) {
+            String oreName = OreDictionary.getOreName(oreId);
+            if (oreName == null) continue;
+            if (!oreName.startsWith("ingotHot")) continue;
+
+            String cooledOreName = "ingot" + oreName.substring("ingotHot".length());
+            List<ItemStack> cooledStacks = OreDictionary.getOres(cooledOreName);
+            if (cooledStacks == null || cooledStacks.isEmpty()) continue;
+
+            ItemStack replacement = cooledStacks.get(0);
+            if (replacement == null) continue;
+
+            ItemStack result = GTOreDictUnificator.setStack(replacement.copy());
+            result.stackSize = instance.stackSize;
+
+            if (instance.stackTagCompound != null) {
+                result.stackTagCompound = (NBTTagCompound) instance.stackTagCompound.copy();
+            }
+
+            return result;
+        }
+
+        return instance.copy();
     }
 }

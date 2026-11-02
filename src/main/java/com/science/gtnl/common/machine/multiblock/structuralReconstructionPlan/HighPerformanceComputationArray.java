@@ -36,6 +36,7 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.util.Vec3Impl;
 import com.gtnewhorizon.structurelib.util.XSTR;
 import com.science.gtnl.ScienceNotLeisure;
+import com.science.gtnl.common.machine.multiMachineBase.TTMultiMachineBase;
 import com.science.gtnl.common.packet.SyncHPCAVariablesPacket;
 import com.science.gtnl.common.render.tile.HighPerformanceComputationArrayRenderer;
 import com.science.gtnl.utils.enums.BlockIcons;
@@ -63,10 +64,11 @@ import gregtech.api.structure.error.StructureError;
 import gregtech.api.structure.error.StructureErrorRegistry;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.IGTHatchAdder;
-import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.api.util.shutdown.ShutDownReason;
 import gregtech.common.WirelessComputationPacket;
+import gregtech.common.misc.GTStructureChannels;
 import gregtech.common.render.IMTERenderer;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import tectech.mechanics.dataTransport.QuantumDataPacket;
 import tectech.thing.casing.BlockGTCasingsTT;
@@ -79,13 +81,14 @@ import tectech.thing.metaTileEntity.multi.base.INameFunction;
 import tectech.thing.metaTileEntity.multi.base.IStatusFunction;
 import tectech.thing.metaTileEntity.multi.base.LedStatus;
 import tectech.thing.metaTileEntity.multi.base.Parameters;
-import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 import tectech.thing.metaTileEntity.multi.base.render.TTRenderedExtendedFacingTexture;
 import tectech.util.CommonValues;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class HighPerformanceComputationArray extends TTMultiblockBase implements ISurvivalConstructable, IMTERenderer {
+public class HighPerformanceComputationArray extends TTMultiMachineBase
+    implements ISurvivalConstructable, IMTERenderer {
 
+    private static final String RACK_HATCH_NAME_KEY = "gt.blockmachines.hatch.rack.tier.08.name";
     public static final INameFunction<HighPerformanceComputationArray> LENS_NAME = (base, p) -> StatCollector
         .translateToLocal("gtnl.gui.high_performance_computation_array.structure_length");
     public static final INameFunction<HighPerformanceComputationArray> MAX_TEMP_NAME = (base, p) -> StatCollector
@@ -118,8 +121,8 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
 
     public int[][] randomColor;
     public Table<Integer, Integer, MTEHatchRack> rackTable = HashBasedTable.create();
-    public ArrayList<MTEHatchRack> mRackHatchs = new ArrayList<>();
-    public ArrayList<MTEHatchWirelessComputationOutput> mWirelessComputationOutputHatchs = new ArrayList<>();
+    public ObjectArrayList<MTEHatchRack> mRackHatchs = new ObjectArrayList<>();
+    public ObjectArrayList<MTEHatchWirelessComputationOutput> mWirelessComputationOutputHatchs = new ObjectArrayList<>();
     public Parameters.Group.ParameterOut maxCurrentTemp, availableData, machineLens, coolantUse;
 
     public HighPerformanceComputationArray(int aID, String aName, String aNameRegional) {
@@ -424,52 +427,11 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
     }
 
     @Override
-    public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.info.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.info.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.info.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.info.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.info.4"))
-            .addSupportAny()
-            .beginVariableStructureBlock(2, 2, 4, 4, 5, 16, false)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.0"),
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.1"),
-                1)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.2"),
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.1"),
-                1)
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.3"),
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.4"),
-                2)
-            .addEnergyHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.1"),
-                1)
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.high_performance_computation_array.casing.1"),
-                1)
-            .toolTipFinisher();
-        return tt;
-    }
-
-    @Override
     public void onScrewdriverRightClick(ForgeDirection side, EntityPlayer aPlayer, float aX, float aY, float aZ,
         ItemStack aTool) {
         if (getBaseMetaTileEntity().isServerSide()) {
             wirelessMode = !wirelessMode;
-            if (wirelessMode) {
-                GTUtility.sendChatTrans(aPlayer, "gtnl.machine.message.wireless_mode.enabled");
-                WirelessComputationPacket.enableWirelessNetWork(getBaseMetaTileEntity());
-            } else {
-                GTUtility.sendChatTrans(aPlayer, "gtnl.machine.message.wireless_mode.disabled");
-                WirelessComputationPacket.disableWirelessNetWork(getBaseMetaTileEntity());
-            }
+            switchWirelessComputation(aPlayer, wirelessMode);
         }
     }
 
@@ -524,11 +486,13 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
 
     @Override
     public void construct(ItemStack stackSize, boolean hintsOnly) {
+        int tLength = GTStructureChannels.STRUCTURE_LENGTH.getValueClamped(stackSize, 3, 15);
+
         buildPiece("front", stackSize, hintsOnly, 1, 2, 0);
         buildPiece("cap", stackSize, hintsOnly, 1, 2, -1);
 
         byte offset = -2;
-        for (int rackSlices = Math.min(Math.max(stackSize.stackSize, 3), 15); rackSlices > 0; rackSlices--) {
+        for (int rackSlices = tLength; rackSlices > 0; rackSlices--) {
             buildPiece("slice", stackSize, hintsOnly, 1, 2, offset--);
         }
 
@@ -539,17 +503,20 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
     @Override
     public int survivalConstruct(ItemStack stackSize, int elementBudget, ISurvivalBuildEnvironment env) {
         if (mMachine) return -1;
+        int tLength = GTStructureChannels.STRUCTURE_LENGTH.getValueClamped(stackSize, 3, 15);
         int built;
+
         built = survivalBuildPiece("front", stackSize, 1, 2, 0, elementBudget, env, false, true);
         if (built >= 0) return built;
         built = survivalBuildPiece("cap", stackSize, 1, 2, -1, elementBudget, env, false, true);
         if (built >= 0) return built;
 
         byte offset = -2;
-        for (int rackSlices = Math.min(Math.max(stackSize.stackSize, 3), 15); rackSlices > 0; rackSlices--) {
+        for (int rackSlices = tLength; rackSlices > 0; rackSlices--) {
             built = survivalBuildPiece("slice", stackSize, 1, 2, offset--, elementBudget, env, false, true);
             if (built >= 0) return built;
         }
+
         built = survivalBuildPiece("cap", stackSize, 1, 2, offset--, elementBudget, env, false, true);
         if (built >= 0) return built;
         return survivalBuildPiece("back", stackSize, 1, 2, offset, elementBudget, env, false, true);
@@ -608,7 +575,7 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> data = new ArrayList<>(Arrays.asList(super.getInfoData()));
+        ObjectArrayList<String> data = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
         if (wirelessMode) {
             WirelessComputationPacket wirelessComputationPacket = WirelessComputationPacket
                 .getPacketByUserId(getBaseMetaTileEntity().getOwnerUuid());
@@ -724,6 +691,16 @@ public class HighPerformanceComputationArray extends TTMultiblockBase implements
         @Override
         public long count(HighPerformanceComputationArray t) {
             return t.mRackHatchs.size();
+        }
+
+        @Override
+        public String getDescriptionLangKey() {
+            return RACK_HATCH_NAME_KEY;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return StatCollector.translateToLocal(RACK_HATCH_NAME_KEY);
         }
     }
 

@@ -6,24 +6,22 @@ import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 
-import com.dreammaster.item.NHItemList;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
+import com.science.gtnl.compat.newhorizons.NHCoreItem;
 import com.science.gtnl.utils.enums.GTNLItemList;
+import com.science.gtnl.utils.enums.ModsItemlist;
 import com.science.gtnl.utils.recipes.RecipeBuilder;
 
 import bartworks.system.material.WerkstoffLoader;
-import cpw.mods.fml.common.Optional;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
-import gregtech.api.enums.Mods;
 import gregtech.api.enums.OrePrefixes;
 import gregtech.api.enums.TierEU;
 import gregtech.api.objects.OreDictItemStack;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
-import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTOreDictUnificator;
 import gregtech.api.util.GTUtility;
 import gtPlusPlus.xmod.gregtech.api.enums.GregtechItemList;
@@ -153,7 +151,7 @@ public class LaserEngraverRecipes implements IRecipePool {
             .itemInputs(GTNLItemList.NinefoldInputHatchUHV.get(1), ItemList.Quantum_Tank_IV.get(1))
             .itemOutputs(GTNLItemList.HumongousNinefoldInputHatch.get(1))
             .duration(200)
-            .eut(7864320)
+            .eut(TierEU.RECIPE_UEV)
             .addTo(lER);
 
         RecipeBuilder.builder()
@@ -201,7 +199,7 @@ public class LaserEngraverRecipes implements IRecipePool {
                 GregtechItemList.Laser_Lens_Special.get(0),
                 new ItemStack(Items.iron_ingot, 1),
                 new ItemStack(Items.diamond, 1))
-            .itemOutputs(GTModHandler.getModItem(Mods.ExtraUtilities.ID, "unstableingot", 1))
+            .itemOutputs(ModsItemlist.ExtraUtilitiesUnstableingot.get(1))
             .duration(100)
             .eut(TierEU.RECIPE_LuV)
             .addTo(lER);
@@ -211,7 +209,7 @@ public class LaserEngraverRecipes implements IRecipePool {
                 GregtechItemList.Laser_Lens_Special.get(0),
                 new ItemStack(Blocks.iron_block, 1),
                 new ItemStack(Blocks.diamond_block, 1))
-            .itemOutputs(GTModHandler.getModItem(Mods.ExtraUtilities.ID, "decorativeBlock1", 1, 5))
+            .itemOutputs(ModsItemlist.ExtraUtilitiesUnstableIngotBlock.get(1))
             .duration(900)
             .eut(TierEU.RECIPE_LuV)
             .addTo(lER);
@@ -221,8 +219,8 @@ public class LaserEngraverRecipes implements IRecipePool {
                 GTNLItemList.NeutroniumBoule.get(1L),
                 WerkstoffLoader.MagnetoResonaticDust.get(OrePrefixes.lens, 0),
                 WerkstoffLoader.Fayalit.get(OrePrefixes.lens, 0),
-                Mods.NewHorizonsCoreMod.isModLoaded() ? getMysteriousCrystalLens()
-                    : GTOreDictUnificator.get(OrePrefixes.lens, Materials.GreenSapphire, 0))
+                NHCoreItem.MysteriousCrystalLens
+                    .get(0, GTOreDictUnificator.get(OrePrefixes.lens, Materials.GreenSapphire, 0)))
             .itemOutputs(ItemList.Circuit_Silicon_Ingot6.get(2))
             .fluidInputs(Materials.UUMatter.getFluid(16000L))
             .duration(30 * SECONDS)
@@ -231,11 +229,6 @@ public class LaserEngraverRecipes implements IRecipePool {
             .addTo(lER);
 
         loadWirelessEnergyCoverRecipes();
-    }
-
-    @Optional.Method(modid = "dreamcraft")
-    public ItemStack getMysteriousCrystalLens() {
-        return NHItemList.MysteriousCrystalLens.get(0);
     }
 
     public void loadWirelessEnergyCoverRecipes() {

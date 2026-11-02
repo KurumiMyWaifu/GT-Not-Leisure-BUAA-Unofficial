@@ -1,7 +1,5 @@
 package com.science.gtnl.common.gui.modularui;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -27,9 +25,14 @@ import com.science.gtnl.api.stellar.StellarIrisNodeDisplay;
 import com.science.gtnl.api.stellar.StellarIrisUpgradeDefinition;
 import com.science.gtnl.api.stellar.StellarIrisUpgradeRegistry;
 import com.science.gtnl.api.stellar.StellarIrisUpgradeTree;
-import com.science.gtnl.utils.world.stellar.StellarIrisTeamSnapshot;
-import com.science.gtnl.utils.world.stellar.StellarIrisUpgradeManager;
+import com.science.gtnl.common.stellar.StellarIrisTeamSnapshot;
+import com.science.gtnl.common.stellar.StellarIrisUpgradeManager;
+import com.science.gtnl.utils.ColorUtils;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -42,14 +45,14 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
     private static final int[][] CIRCLE_HALF_WIDTHS = createCircleHalfWidths();
     private static final int[][] RING_OFFSETS = createRingOffsets();
 
-    private final List<CosmicParticle> particles = new ArrayList<>();
-    private final Map<String, NodePosition> nodePositions = new HashMap<>();
-    private final Map<String, NodePosition> baseNodeOffsets = new HashMap<>();
-    private final Map<StellarIrisUpgradeTree, List<StellarIrisUpgradeDefinition>> definitionsByTree = new HashMap<>();
-    private final Map<StellarIrisUpgradeTree, Map<Integer, List<StellarIrisUpgradeDefinition>>> definitionsByTreeAndRow = new HashMap<>();
+    private final List<CosmicParticle> particles = new ObjectArrayList<>();
+    private final Map<String, NodePosition> nodePositions = new Object2ObjectOpenHashMap<>();
+    private final Map<String, NodePosition> baseNodeOffsets = new Object2ObjectOpenHashMap<>();
+    private final Map<StellarIrisUpgradeTree, List<StellarIrisUpgradeDefinition>> definitionsByTree = new Object2ObjectOpenHashMap<>();
+    private final Map<StellarIrisUpgradeTree, Int2ObjectMap<List<StellarIrisUpgradeDefinition>>> definitionsByTreeAndRow = new Object2ObjectOpenHashMap<>();
     private final Random random = new Random();
 
-    private List<StellarIrisUpgradeDefinition> definitions = new ArrayList<>();
+    private List<StellarIrisUpgradeDefinition> definitions = new ObjectArrayList<>();
     private StellarIrisTeamSnapshot snapshot = new StellarIrisTeamSnapshot();
     @Setter
     private StellarIrisUpgradeActionSyncHandler actionHandler;
@@ -243,7 +246,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
     }
 
     private void renderGalaxyFallback(int width, int height) {
-        drawBatchRect(0, 0, width, height, alphaColor(0xFF03040C, fadeAlpha));
+        drawBatchRect(0, 0, width, height, alphaColor(ColorUtils.stellarBackground.getColor(), fadeAlpha));
         int bandHeight = Math.max(1, height / 18);
         for (int band = 0; band < 18; band++) {
             float wave = (MathHelper.sin((ticks + band * 13) * 0.025F) + 1.0F) * 0.5F;
@@ -257,8 +260,16 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                 Math.min(height, (band + 1) * bandHeight),
                 alphaColor((red << 16) | (green << 8) | blue, fadeAlpha * 0.35F));
         }
-        renderNebula(width * 0.28F, height * 0.25F, Math.min(width, height) * 0.32F, 0x4F57368A);
-        renderNebula(width * 0.72F, height * 0.72F, Math.min(width, height) * 0.28F, 0x4F174D75);
+        renderNebula(
+            width * 0.28F,
+            height * 0.25F,
+            Math.min(width, height) * 0.32F,
+            ColorUtils.stellarNebulaPurple.getColor());
+        renderNebula(
+            width * 0.72F,
+            height * 0.72F,
+            Math.min(width, height) * 0.28F,
+            ColorUtils.stellarNebulaBlue.getColor());
     }
 
     private void renderNebula(float centerX, float centerY, float radius, int color) {
@@ -298,16 +309,16 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
         if (cachedDefinitionCount == definitionCount) {
             return;
         }
-        definitions = new ArrayList<>(StellarIrisUpgradeRegistry.getUpgrades());
+        definitions = new ObjectArrayList<>(StellarIrisUpgradeRegistry.getUpgrades());
         definitionsByTree.clear();
         definitionsByTreeAndRow.clear();
         baseNodeOffsets.clear();
         for (StellarIrisUpgradeDefinition definition : definitions) {
             StellarIrisUpgradeTree tree = definition.getTree();
-            definitionsByTree.computeIfAbsent(tree, ignored -> new ArrayList<>())
+            definitionsByTree.computeIfAbsent(tree, ignored -> new ObjectArrayList<>())
                 .add(definition);
-            definitionsByTreeAndRow.computeIfAbsent(tree, ignored -> new HashMap<>())
-                .computeIfAbsent(definition.getRow(), ignored -> new ArrayList<>())
+            definitionsByTreeAndRow.computeIfAbsent(tree, ignored -> new Int2ObjectOpenHashMap<>())
+                .computeIfAbsent(definition.getRow(), ignored -> new ObjectArrayList<>())
                 .add(definition);
         }
         for (StellarIrisUpgradeDefinition definition : definitions) {
@@ -392,7 +403,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                 coreX,
                 coreY,
                 currentRadius,
-                alphaColor(0xFFCC44, (1.0F - progress) * 40.0F / 255.0F * fadeAlpha));
+                alphaColor(ColorUtils.stellarAccent.getColor(), (1.0F - progress) * 40.0F / 255.0F * fadeAlpha));
         }
         for (int currentRadius = radius; currentRadius > 0; currentRadius -= 2) {
             float progress = currentRadius / (float) radius;
@@ -439,7 +450,8 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                         alphaColor(branchColor, (1.0F - progress) * 60.0F / 255.0F * fadeAlpha * stateAlpha));
                 }
             }
-            int coreColor = tierLocked ? 0x282828 : owned ? branchColor : darken(branchColor, 0.4F);
+            int coreColor = tierLocked ? ColorUtils.stellarCoreLocked.getColor()
+                : owned ? branchColor : darken(branchColor, 0.4F);
             drawNodeCircle(position.x, position.y, radius, alphaColor(coreColor, fadeAlpha * stateAlpha));
             int borderColor = owned ? branchColor
                 : available ? darken(
@@ -448,7 +460,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                         ticks * 0.08F + definition.getId()
                             .hashCode())
                         * 0.3F + 0.7F)
-                    : 0x404050;
+                    : ColorUtils.stellarCoreEdge.getColor();
             drawNodeRing(
                 position.x,
                 position.y,
@@ -465,7 +477,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                         (int) ringY - 1,
                         (int) ringX + 2,
                         (int) ringY + 2,
-                        alphaColor(0xFFFFFF, fadeAlpha * 200.0F / 255.0F));
+                        alphaColor(ColorUtils.guiTextColorWhite.getColor(), fadeAlpha * 200.0F / 255.0F));
                 }
             }
         }
@@ -495,7 +507,9 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                     : tierLocked ? "T" + getRequiredTier(definition)
                         : Integer.toString(definition.getCostForLevel(level + 1))
                 : nodeDisplay.getText();
-            int textColor = owned ? 0xFFFFFF : tierLocked ? 0x505050 : available ? 0xFFCC44 : 0x606060;
+            int textColor = owned ? ColorUtils.guiTextColorWhite.getColor()
+                : tierLocked ? ColorUtils.stellarLocked.getColor()
+                    : available ? ColorUtils.stellarAccent.getColor() : ColorUtils.stellarTextMuted.getColor();
             font.drawString(
                 label,
                 (int) position.x - font.getStringWidth(label) / 2,
@@ -539,9 +553,20 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
             .translateToLocalFormatted("gtnl.stellar_iris.points", snapshot.getSpendablePoints());
         String tier = StatCollector.translateToLocalFormatted("gtnl.stellar_iris.tier", snapshot.getTier());
         String title = StatCollector.translateToLocal("gtnl.stellar_iris.title");
-        font.drawString(points, 20, 20, alphaColor(snapshot.getSpendablePoints() > 0 ? 0xFFCC44 : 0x808080, fadeAlpha));
-        font.drawString(tier, 20, 34, alphaColor(0xAAAAAA, fadeAlpha));
-        font.drawString(title, (width - font.getStringWidth(title)) / 2, 15, alphaColor(0xE0E0F0, fadeAlpha));
+        font.drawString(
+            points,
+            20,
+            20,
+            alphaColor(
+                snapshot.getSpendablePoints() > 0 ? ColorUtils.stellarAccent.getColor()
+                    : ColorUtils.stellarSoftGray.getColor(),
+                fadeAlpha));
+        font.drawString(tier, 20, 34, alphaColor(ColorUtils.guiTextColorMuted.getColor(), fadeAlpha));
+        font.drawString(
+            title,
+            (width - font.getStringWidth(title)) / 2,
+            15,
+            alphaColor(ColorUtils.stellarHeader.getColor(), fadeAlpha));
     }
 
     private void renderDetails(int width, int height) {
@@ -562,7 +587,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
             panelY,
             panelX + panelWidth,
             panelY + panelHeight,
-            alphaColor(0x0C0C14, fadeAlpha * panelSlide * 230.0F / 255.0F));
+            alphaColor(ColorUtils.stellarPanel.getColor(), fadeAlpha * panelSlide * 230.0F / 255.0F));
         drawPanelBorder(panelX, panelY, panelWidth, panelHeight, alphaColor(branchColor, fadeAlpha * panelSlide));
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
         int textX = panelX + 10;
@@ -579,7 +604,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                     lines.get(index),
                     textX,
                     panelY + 28 + index * 10,
-                    alphaColor(0x9090A0, fadeAlpha * panelSlide));
+                    alphaColor(ColorUtils.stellarPanelText.getColor(), fadeAlpha * panelSlide));
             }
             infoY = panelY + 34 + lines.size() * 10;
         }
@@ -593,13 +618,17 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
             StatCollector.translateToLocalFormatted("gtnl.stellar_iris.cost", cost),
             textX,
             infoY,
-            alphaColor(canAfford ? 0xFFCC44 : 0xFF5544, fadeAlpha * panelSlide));
+            alphaColor(
+                canAfford ? ColorUtils.stellarAccent.getColor() : ColorUtils.stellarDanger.getColor(),
+                fadeAlpha * panelSlide));
         boolean tierMet = snapshot.getTier() >= getRequiredTier(definition);
         font.drawString(
             StatCollector.translateToLocalFormatted("gtnl.stellar_iris.tier_requirement", getRequiredTier(definition)),
             textX,
             infoY + 14,
-            alphaColor(tierMet ? 0x707080 : 0xFF5544, fadeAlpha * panelSlide));
+            alphaColor(
+                tierMet ? ColorUtils.stellarBlueGray.getColor() : ColorUtils.stellarDanger.getColor(),
+                fadeAlpha * panelSlide));
         font.drawString(
             getStatus(definition, level),
             textX,
@@ -616,13 +645,17 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
         if (maxed) {
             levelText = levelText + " (" + StatCollector.translateToLocal("gtnl.stellar_iris.max_level") + ")";
         }
-        font.drawString(levelText, textX, infoY, alphaColor(maxed ? 0x44FF44 : 0xAAAAAA, alpha));
+        font.drawString(
+            levelText,
+            textX,
+            infoY,
+            alphaColor(maxed ? ColorUtils.stellarPositive.getColor() : ColorUtils.guiTextColorMuted.getColor(), alpha));
         if (maxed) {
             font.drawString(
                 StatCollector.translateToLocal("gtnl.stellar_iris.max_level"),
                 textX,
                 statusY,
-                alphaColor(0x44FF44, alpha));
+                alphaColor(ColorUtils.stellarPositive.getColor(), alpha));
             return;
         }
         int nextCost = definition.getCostForLevel(level + 1);
@@ -631,13 +664,15 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
             StatCollector.translateToLocalFormatted("gtnl.stellar_iris.next_level", nextCost),
             textX,
             infoY + 14,
-            alphaColor(canAfford ? 0xFFCC44 : 0xFF5544, alpha));
+            alphaColor(canAfford ? ColorUtils.stellarAccent.getColor() : ColorUtils.stellarDanger.getColor(), alpha));
         font.drawString(
             StatCollector
                 .translateToLocal(canAfford ? "gtnl.stellar_iris.available" : "gtnl.stellar_iris.insufficient_points"),
             textX,
             statusY,
-            alphaColor(canAfford ? 0x88FF88 : 0xFF8844, alpha));
+            alphaColor(
+                canAfford ? ColorUtils.stellarBrightPositive.getColor() : ColorUtils.stellarWarning.getColor(),
+                alpha));
     }
 
     private String getStatus(StellarIrisUpgradeDefinition definition, int level) {
@@ -684,7 +719,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
 
     private void renderControlsHint(int width, int height) {
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-        int color = alphaColor(0x606070, fadeAlpha * 100.0F / 255.0F);
+        int color = alphaColor(ColorUtils.stellarDeepGray.getColor(), fadeAlpha * 100.0F / 255.0F);
         String panHint = StatCollector.translateToLocal("gtnl.stellar_iris.controls.pan_zoom");
         font.drawString(StatCollector.translateToLocal("gtnl.stellar_iris.controls.close"), 20, height - 25, color);
         font.drawString(panHint, width - font.getStringWidth(panHint) - 20, height - 25, color);
@@ -721,15 +756,17 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
 
     private int getStatusColor(StellarIrisUpgradeDefinition definition, int level) {
         if (level > 0) {
-            return 0x44FF44;
+            return ColorUtils.stellarPositive.getColor();
         }
         if (snapshot.getTier() < getRequiredTier(definition)) {
-            return 0xFF5544;
+            return ColorUtils.stellarDanger.getColor();
         }
         if (StellarIrisUpgradeManager.canUnlock(snapshot, definition)) {
-            return snapshot.getSpendablePoints() >= definition.getCostForLevel(level + 1) ? 0x88FF88 : 0xFF8844;
+            return snapshot.getSpendablePoints() >= definition.getCostForLevel(level + 1)
+                ? ColorUtils.stellarBrightPositive.getColor()
+                : ColorUtils.stellarWarning.getColor();
         }
-        return 0x888888;
+        return ColorUtils.stellarNeutral.getColor();
     }
 
     private int getRequiredTier(StellarIrisUpgradeDefinition definition) {
@@ -799,7 +836,7 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
                 pulseY - 2,
                 pulseX + 3,
                 pulseY + 3,
-                alphaColor(0xFFFFFF, fadeAlpha * 220.0F / 255.0F));
+                alphaColor(ColorUtils.guiTextColorWhite.getColor(), fadeAlpha * 220.0F / 255.0F));
         }
     }
 
@@ -949,7 +986,8 @@ public class StellarIrisUpgradeTreeWidget extends Widget<StellarIrisUpgradeTreeW
             velocityY = (random.nextFloat() - 0.5F) * 0.25F;
             age = 0;
             maximumAge = 100 + random.nextInt(160);
-            color = random.nextBoolean() ? 0xB7DFFF : 0x9B8FFF;
+            color = random.nextBoolean() ? ColorUtils.stellarParticleBlue.getColor()
+                : ColorUtils.stellarParticlePurple.getColor();
             size = random.nextInt(3) + 1;
         }
 

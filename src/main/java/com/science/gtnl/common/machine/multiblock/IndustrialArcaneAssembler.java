@@ -7,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +18,9 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.gui.modularui.GTNLMultiBlockBaseGui;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
+import com.science.gtnl.common.recipe.thaumcraft.TCRecipeTools;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.item.ItemUtils;
 import com.science.gtnl.utils.structure.GTNLStructureErrors;
@@ -29,12 +30,12 @@ import gregtech.api.enums.HatchElement;
 import gregtech.api.enums.Materials;
 import gregtech.api.enums.Mods;
 import gregtech.api.enums.Textures;
-import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.api.recipe.RecipeMap;
+import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTStructureUtility;
@@ -149,6 +150,16 @@ public class IndustrialArcaneAssembler extends MultiMachineBase<IndustrialArcane
             GTNLRecipeMaps.IndustrialInfusionCraftingRecipes);
     }
 
+    @NotNull
+    @Override
+    public CheckRecipeResult checkProcessing() {
+        CheckRecipeResult result = super.checkProcessing();
+        if (result.wasSuccessful() && machineMode == InfusionCrafting) {
+            mOutputItems = TCRecipeTools.appendPrimordialPearlReturns(mOutputItems, processingLogic);
+        }
+        return result;
+    }
+
     @Override
     public int getMaxParallelRecipes() {
         return Integer.MAX_VALUE;
@@ -205,22 +216,8 @@ public class IndustrialArcaneAssembler extends MultiMachineBase<IndustrialArcane
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.2"))
-            .addSupportAny()
-            .beginStructureBlock(19, 19, 19, true)
-            .addInputBus(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.casing"))
-            .addOutputBus(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.casing"))
-            .addEnergyHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.industrial_arcane_assembler.tooltip.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -240,15 +237,6 @@ public class IndustrialArcaneAssembler extends MultiMachineBase<IndustrialArcane
     @Override
     public String getMachineModeKey() {
         return "gtnl.machine.industrial_arcane_assembler.mode." + machineMode;
-    }
-
-    @Override
-    @Deprecated
-    public void setMachineModeIcons() {
-        // TODO: Remove this mui1 fallback after the Industrial Arcane Assembler GUI no longer supports mui1 startup
-        // paths.
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_LPF_FLUID);
-        machineModeIcons.add(GTUITextures.OVERLAY_BUTTON_MACHINEMODE_LPF_METAL);
     }
 
     @Override

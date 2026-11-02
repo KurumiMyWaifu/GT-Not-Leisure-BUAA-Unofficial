@@ -13,7 +13,6 @@ import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,18 +39,14 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.gtnewhorizons.modularui.common.widget.DynamicPositionedColumn;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
+import com.gtnllib.utils.GameUtils;
 import com.science.gtnl.api.IStackVault;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.modularui.SingularityDataHubGui;
-import com.science.gtnl.common.gui.modularui.VaultTypeCountFormatter;
+import com.science.gtnl.common.gui.modularui.multiblock.SingularityDataHubGui;
 import com.science.gtnl.common.machine.hatch.VaultPortHatch;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.enums.BlockIcons;
 
 import appeng.api.storage.data.AEStackTypeRegistry;
@@ -76,7 +71,6 @@ import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
-import gregtech.api.structure.error.TranslatableText;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.GTUtility.ItemId;
 import gregtech.api.util.MultiblockTooltipBuilder;
@@ -84,6 +78,8 @@ import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.tileentities.machines.MTEHatchCraftingInputME;
 import gregtech.common.tileentities.machines.MTEHatchInputBusME;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import lombok.Getter;
 import lombok.Setter;
 import mcp.mobius.waila.api.IWailaConfigHandler;
@@ -94,7 +90,7 @@ import tectech.thing.casing.BlockGTCasingsTT;
 public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
     implements ISurvivalConstructable, IStackVault {
 
-    private static final TranslatableText VAULT_PORT_HATCH_NAME = TranslatableText.lang("VaultPortHatch");
+    private static final String VAULT_PORT_HATCH_NAME = "gtnl.hatch.vault_port.name";
 
     public static long MAX_DISTINCT_ITEMS = Long.MAX_VALUE - 1;
     public static long MAX_DISTINCT_FLUIDS = Long.MAX_VALUE - 1;
@@ -122,7 +118,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
     private static final String STORE_STACKS_KEY = "STORE_STACKS";
     private static final char GUI_PAYLOAD_SEPARATOR = '\t';
 
-    public Map<IAEStackType<?>, IItemList<?>> STORE_STACKS = new IdentityHashMap<>();
+    public Map<IAEStackType<?>, IItemList<?>> STORE_STACKS = new Reference2ObjectOpenHashMap<>();
     private String typeCountPayloadForGui = "";
 
     public SingularityDataHub(int aID, String aName, String aNameRegional) {
@@ -165,6 +161,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
                         .hint(1)
                         .build(),
                     buildHatchAdder(SingularityDataHub.class).hatchClass(VaultPortHatch.class)
+                        .description(() -> VAULT_PORT_HATCH_NAME)
                         .shouldReject(t -> t.portHatch != null)
                         .adder(SingularityDataHub::addPortBusToMachineList)
                         .casingIndex(getCasingTextureID())
@@ -189,21 +186,6 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
     @Override
     protected @NotNull MTEMultiBlockBaseGui<?> getGui() {
         return new SingularityDataHubGui(this);
-    }
-
-    @Override
-    @Deprecated
-    public void drawTexts(DynamicPositionedColumn screenElements, SlotWidget inventorySlot) {
-        super.drawTexts(screenElements, inventorySlot);
-        screenElements
-            .widget(
-                new TextWidget()
-                    .setStringSupplier(
-                        () -> VaultTypeCountFormatter
-                            .createTypeCountText(typeCountPayloadForGui, "gtnl.gui.singularity_data_hub.type_count"))
-                    .setDefaultColor(COLOR_TEXT_WHITE.get())
-                    .setEnabled(true))
-            .widget(new FakeSyncWidget.StringSyncer(this::getTypeCountPayloadForGui, this::setTypeCountPayloadFromGui));
     }
 
     @Override
@@ -404,20 +386,14 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
     }
 
     @Override
+    public TooltipStats getTooltipStats() {
+        return null;
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.6"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.tooltip.7"))
-            .beginStructureBlock(15, 31, 15, false)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.casing"), 1)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.singularity_data_hub.casing"), 1)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -440,6 +416,11 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
                 TextureFactory.builder()
                     .addIcon(BlockIcons.OVERLAY_FRONT_SINGULARITY_DATA_HUB)
                     .extFacing()
+                    .build(),
+                TextureFactory.builder()
+                    .addIcon(BlockIcons.OVERLAY_FRONT_SINGULARITY_DATA_HUB_GLOW)
+                    .extFacing()
+                    .glow()
                     .build() };
         }
         return new ITexture[] { Textures.BlockIcons.getCasingTextureForId(getCasingTextureID()) };
@@ -452,7 +433,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
 
     @Override
     public String[] getInfoData() {
-        ArrayList<String> ll = new ArrayList<>();
+        List<String> ll = new ObjectArrayList<>();
         for (IAEStackType<?> type : AEStackTypeRegistry.getAllTypes()) {
             IItemList<?> store = STORE_STACKS.get(type);
             if (store == null || store.isEmpty()) continue;
@@ -478,7 +459,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
         return ll.toArray(new String[0]);
     }
 
-    private <T extends IAEStack<T>> void addStoredTypeInfo(ArrayList<String> info, IAEStackType<T> type,
+    private <T extends IAEStack<T>> void addStoredTypeInfo(List<String> info, IAEStackType<T> type,
         IItemList<?> store) {
         info.add(
             EnumChatFormatting.YELLOW
@@ -500,7 +481,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
         }
     }
 
-    private void addOperationalTypeInfo(ArrayList<String> info, IAEStackType<?> type) {
+    private void addOperationalTypeInfo(List<String> info, IAEStackType<?> type) {
         String typeName = getTypeName(type);
         info.add(
             IGregTechDeviceInformation.encode(
@@ -540,7 +521,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
         }
 
         if (!hasStoredStacks()) return;
-        String uuid = Utils.ensureUUID(aNBT);
+        String uuid = GameUtils.ensureUUID(aNBT);
         NBTTagCompound storeRoot = new NBTTagCompound();
         writeStoredStacks(storeRoot);
 
@@ -567,7 +548,7 @@ public class SingularityDataHub extends MultiMachineBase<SingularityDataHub>
         if (!locked) {
             aNBT.setBoolean("locked", false);
         }
-        Utils.ensureUUID(aNBT);
+        GameUtils.ensureUUID(aNBT);
         writeStoredStacks(aNBT);
         super.saveNBTData(aNBT);
     }

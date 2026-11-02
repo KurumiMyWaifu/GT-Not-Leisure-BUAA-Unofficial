@@ -1,6 +1,5 @@
 package com.science.gtnl.common.effect.effects;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -12,7 +11,6 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.FoodStats;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.LivingSetAttackTargetEvent;
@@ -20,26 +18,30 @@ import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
 
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.science.gtnl.common.effect.EffectBase;
 import com.science.gtnl.loader.EffectLoader;
 import com.science.gtnl.mixins.early.minecraft.AccessorFoodStats;
+import com.science.gtnl.utils.ColorUtils;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+@EventBusSubscriber(phase = Phase.PRE)
 public class PotionGhostlyShape extends EffectBase {
 
-    private static final Set<EntityPlayer> affectedPlayers = new HashSet<>();
+    private static final Set<EntityPlayer> affectedPlayers = new ObjectOpenHashSet<>();
 
     public PotionGhostlyShape(int id) {
-        super(id, "ghostly_shape", false, 0x99ccff, 4);
-        MinecraftForge.EVENT_BUS.register(this);
+        super(id, "ghostly_shape", false, ColorUtils.rgb(ColorUtils.effectGhostlyShape), 4);
     }
 
     @SubscribeEvent
-    public void onLivingUpdate(LivingEvent.LivingUpdateEvent event) {
+    public static void onLivingUpdate(LivingEvent.LivingUpdateEvent event) {
         if (!(event.entity instanceof EntityPlayer player)) return;
 
-        PotionEffect effect = player.getActivePotionEffect(this);
+        PotionEffect effect = player.getActivePotionEffect(EffectLoader.ghostly_shape);
         if (effect == null) {
             affectedPlayers.remove(player);
             return;
@@ -69,11 +71,14 @@ public class PotionGhostlyShape extends EffectBase {
         player.hurtResistantTime = 0;
 
         if (!affectedPlayers.contains(player)) {
-            List<EntityLivingBase> nearby = player.worldObj
-                .getEntitiesWithinAABB(EntityLivingBase.class, player.boundingBox.expand(32, 32, 32));
-            for (EntityLivingBase e : nearby) {
-                if (e instanceof EntityCreature creature && creature.getAttackTarget() == player) {
+            List<EntityCreature> nearby = player.worldObj
+                .getEntitiesWithinAABB(EntityCreature.class, player.boundingBox.expand(32, 32, 32));
+            for (EntityCreature creature : nearby) {
+                if (creature.getAttackTarget() == player) {
                     creature.setAttackTarget(null);
+                }
+                if (creature.getEntityToAttack() == player) {
+                    creature.setTarget(null);
                 }
             }
             affectedPlayers.add(player);
@@ -86,7 +91,7 @@ public class PotionGhostlyShape extends EffectBase {
     }
 
     @SubscribeEvent
-    public void onEntityTarget(LivingSetAttackTargetEvent event) {
+    public static void onEntityTarget(LivingSetAttackTargetEvent event) {
         if (event.target instanceof EntityPlayer player && event.entityLiving instanceof EntityCreature creature) {
             if (player.isPotionActive(EffectLoader.ghostly_shape)) {
                 creature.setAttackTarget(null);
@@ -95,7 +100,7 @@ public class PotionGhostlyShape extends EffectBase {
     }
 
     @SubscribeEvent
-    public void onLivingHurt(LivingHurtEvent event) {
+    public static void onLivingHurt(LivingHurtEvent event) {
         if (event.entityLiving instanceof EntityPlayer player) {
             if (player.isPotionActive(EffectLoader.ghostly_shape)) {
                 player.worldObj.playSoundAtEntity(player, "random.hurt", 1.0F, 1.0F);
@@ -106,7 +111,7 @@ public class PotionGhostlyShape extends EffectBase {
     }
 
     @SubscribeEvent
-    public void onPlayerUseItem(PlayerInteractEvent event) {
+    public static void onPlayerUseItem(PlayerInteractEvent event) {
         EntityPlayer player = event.entityPlayer;
         if (player.worldObj.isRemote) return;
         if (!player.isPotionActive(EffectLoader.ghostly_shape)) return;
@@ -127,7 +132,7 @@ public class PotionGhostlyShape extends EffectBase {
     }
 
     @SubscribeEvent
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
         EntityPlayer player = event.getPlayer();
         if (player.worldObj.isRemote) return;
         if (player.isPotionActive(EffectLoader.ghostly_shape)) {
@@ -137,12 +142,34 @@ public class PotionGhostlyShape extends EffectBase {
     }
 
     @SubscribeEvent
-    public void onAttackEntity(AttackEntityEvent event) {
+    public static void onAttackEntity(AttackEntityEvent event) {
         EntityPlayer player = event.entityPlayer;
         if (player.worldObj.isRemote) return;
         if (player.isPotionActive(EffectLoader.ghostly_shape)) {
             player.removePotionEffect(EffectLoader.ghostly_shape.id);
             player.addChatMessage(new ChatComponentTranslation("gtnl.effect.ghostly_shape.cancelled"));
         }
+    }
+
+    public static EntityPlayer closestVisiblePlayer(List<EntityPlayer> players, EntityPlayer closest, double x,
+        double y, double z, double range) {
+        EntityPlayer replacement = null;
+        double closestDistanceSq = -1.0D;
+
+        for (EntityPlayer candidate : players) {
+            if (candidate == closest || !candidate.isEntityAlive()
+                || candidate.capabilities.disableDamage
+                || candidate.isPotionActive(EffectLoader.ghostly_shape)) {
+                continue;
+            }
+
+            double distanceSq = candidate.getDistanceSq(x, y, z);
+            if ((range < 0.0D || distanceSq < range * range)
+                && (closestDistanceSq < 0.0D || distanceSq < closestDistanceSq)) {
+                closestDistanceSq = distanceSq;
+                replacement = candidate;
+            }
+        }
+        return replacement;
     }
 }

@@ -1,0 +1,81 @@
+package com.science.gtnl.common.block.blocks;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockContainer;
+import net.minecraft.block.material.Material;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EnumCreatureType;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.world.IBlockAccess;
+import net.minecraft.world.World;
+
+import com.science.gtnl.common.block.blocks.tile.TileEntityMultiEssentiaInputHatch;
+
+import gregtech.api.GregTechAPI;
+import gregtech.api.util.GTUtility;
+import thaumcraft.api.aspects.AspectList;
+
+public class BlockMultiEssentiaInputHatch extends BlockContainer {
+
+    public BlockMultiEssentiaInputHatch() {
+        super(Material.iron);
+        setHardness(9.0F);
+        setResistance(5.0F);
+        setHarvestLevel("wrench", 2);
+    }
+
+    @Override
+    public String getUnlocalizedName() {
+        return "gtnl.block.multi_essentia_input_hatch";
+    }
+
+    @Override
+    public void onBlockAdded(World world, int x, int y, int z) {
+        if (GregTechAPI.isMachineBlock(this, world.getBlockMetadata(x, y, z))) {
+            GregTechAPI.causeMachineUpdate(world, x, y, z);
+        }
+    }
+
+    @Override
+    public void breakBlock(World world, int x, int y, int z, Block block, int meta) {
+        if (GregTechAPI.isMachineBlock(this, world.getBlockMetadata(x, y, z))) {
+            GregTechAPI.causeMachineUpdate(world, x, y, z);
+        }
+        world.removeTileEntity(x, y, z);
+    }
+
+    @Override
+    public boolean canBeReplacedByLeaves(IBlockAccess world, int x, int y, int z) {
+        return false;
+    }
+
+    @Override
+    public boolean canEntityDestroy(IBlockAccess world, int x, int y, int z, Entity entity) {
+        return false;
+    }
+
+    @Override
+    public boolean canCreatureSpawn(EnumCreatureType type, IBlockAccess world, int x, int y, int z) {
+        return false;
+    }
+
+    @Override
+    public boolean onBlockActivated(World world, int x, int y, int z, EntityPlayer player, int side, float hitX,
+        float hitY, float hitZ) {
+        if (world.isRemote || !player.isSneaking() || player.getHeldItem() != null) return false;
+
+        TileEntity tile = world.getTileEntity(x, y, z);
+        if (!(tile instanceof TileEntityMultiEssentiaInputHatch hatch)) return false;
+
+        int removed = hatch.getTotalAmount();
+        hatch.setAspects(new AspectList());
+        GTUtility.sendChatTrans(player, "gtnl.chat.multi_essentia_input_hatch.cleared", removed);
+        return true;
+    }
+
+    @Override
+    public TileEntity createNewTileEntity(World world, int meta) {
+        return new TileEntityMultiEssentiaInputHatch();
+    }
+}

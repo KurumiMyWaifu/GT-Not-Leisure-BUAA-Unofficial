@@ -2,6 +2,8 @@ package com.science.gtnl.api.stellar;
 
 import net.minecraft.util.EnumChatFormatting;
 
+import com.gtnllib.text.TextEffectColors;
+
 import lombok.Getter;
 
 @Getter
@@ -40,22 +42,22 @@ public class StellarIrisUpgradeTree {
             throw new IllegalArgumentException("Tree tooltip color must not be null");
         }
         return switch (formatting) {
-            case BLACK -> 0x000000;
-            case DARK_BLUE -> 0x0000AA;
-            case DARK_GREEN -> 0x00AA00;
-            case DARK_AQUA -> 0x00AAAA;
-            case DARK_RED -> 0xAA0000;
-            case DARK_PURPLE -> 0xAA00AA;
-            case GOLD -> 0xFFAA00;
-            case GRAY -> 0xAAAAAA;
-            case DARK_GRAY -> 0x555555;
-            case BLUE -> 0x5555FF;
-            case GREEN -> 0x55FF55;
-            case AQUA -> 0x55FFFF;
-            case RED -> 0xFF5555;
-            case LIGHT_PURPLE -> 0xFF55FF;
-            case YELLOW -> 0xFFFF55;
-            case WHITE -> 0xFFFFFF;
+            case BLACK -> TextEffectColors.vanillaColor(0);
+            case DARK_BLUE -> TextEffectColors.vanillaColor(1);
+            case DARK_GREEN -> TextEffectColors.vanillaColor(2);
+            case DARK_AQUA -> TextEffectColors.vanillaColor(3);
+            case DARK_RED -> TextEffectColors.vanillaColor(4);
+            case DARK_PURPLE -> TextEffectColors.vanillaColor(5);
+            case GOLD -> TextEffectColors.vanillaColor(6);
+            case GRAY -> TextEffectColors.vanillaColor(7);
+            case DARK_GRAY -> TextEffectColors.vanillaColor(8);
+            case BLUE -> TextEffectColors.vanillaColor(9);
+            case GREEN -> TextEffectColors.vanillaColor(10);
+            case AQUA -> TextEffectColors.vanillaColor(11);
+            case RED -> TextEffectColors.vanillaColor(12);
+            case LIGHT_PURPLE -> TextEffectColors.vanillaColor(13);
+            case YELLOW -> TextEffectColors.vanillaColor(14);
+            case WHITE -> TextEffectColors.vanillaColor(15);
             default -> throw new IllegalArgumentException("Tree tooltip formatting must be a color");
         };
     }

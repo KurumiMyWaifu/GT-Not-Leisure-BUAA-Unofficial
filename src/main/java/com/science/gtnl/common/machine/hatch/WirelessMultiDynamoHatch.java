@@ -8,11 +8,14 @@ import com.gtnewhorizon.gtnhlib.util.numberformatting.NumberFormatUtil;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.ITexture;
+import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.MetaTileEntity;
 import tectech.mechanics.pipe.IConnectsToEnergyTunnel;
 import tectech.thing.metaTileEntity.hatch.MTEHatchWirelessDynamoMulti;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class WirelessMultiDynamoHatch extends MTEHatchWirelessDynamoMulti implements IConnectsToEnergyTunnel {
 
     public WirelessMultiDynamoHatch(int aID, String aName, String aNameRegional, int aTier, int aAmp) {
@@ -22,6 +25,18 @@ public class WirelessMultiDynamoHatch extends MTEHatchWirelessDynamoMulti implem
     public WirelessMultiDynamoHatch(String aName, int aTier, int aAmp, String[] aDescription,
         ITexture[][][] aTextures) {
         super(aName, aTier, aAmp, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.wireless_dynamo.humongous.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override
@@ -66,10 +81,8 @@ public class WirelessMultiDynamoHatch extends MTEHatchWirelessDynamoMulti implem
                 + AnimatedTooltipHandler.GREEN
                 + AnimatedTooltipHandler.BOLD
                 + "Chrom",
-            StatCollector.translateToLocal("gt.blockmachines.hatch.energytunnel.desc.1") + ": "
-                + AnimatedTooltipHandler.YELLOW
-                + NumberFormatUtil.formatNumber(maxAmperes * GTValues.V[mTier])
-                + AnimatedTooltipHandler.GRAY
-                + " EU/t" };
+            StatCollector.translateToLocalFormatted(
+                "gt.tileentity.throughput",
+                NumberFormatUtil.formatNumber(maxAmperes * GTValues.V[mTier])) };
     }
 }

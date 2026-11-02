@@ -2,7 +2,6 @@ package com.science.gtnl.common.machine.monitor;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +33,7 @@ import com.science.gtnl.common.machine.multiblock.module.eternalGregTechWorkshop
 import com.science.gtnl.common.machine.multiblock.module.eternalGregTechWorkshop.EternalGregTechWorkshopModule;
 import com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan.EnergyInfuser;
 import com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan.KuangBiaoOneGiantNuclearFusionReactor.UEVTier;
+import com.science.gtnl.utils.world.teams.TeamNetworkManager;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.tileentity.ICoverable;
@@ -46,6 +46,8 @@ import gregtech.api.metatileentity.implementations.MTEMultiBlockBase;
 import gregtech.api.metatileentity.implementations.MTEWirelessEnergy;
 import gregtech.common.misc.WirelessNetworkManager;
 import gregtech.common.tileentities.machines.multi.purification.MTEPurificationPlant;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import kekztech.common.tileentities.MTELapotronicSuperCapacitor;
 import lombok.Getter;
 import tectech.thing.metaTileEntity.hatch.MTEHatchWirelessDynamoMulti;
@@ -79,16 +81,15 @@ public class EnergyMonitorCollector {
             return EnergyMonitorSnapshot.empty();
         }
 
-        WirelessTeam.TeamContext teamContext = WirelessTeam.resolveContext(monitorOwnerUuid);
-        UUID leader = teamContext.getLeader();
-        Set<UUID> teamMembers = teamContext.getMembers();
+        UUID leader = TeamNetworkManager.getTeamId(monitorOwnerUuid);
+        Set<UUID> teamMembers = new ObjectOpenHashSet<>(TeamNetworkManager.getMembers(monitorOwnerUuid));
         if (leader == null || teamMembers.isEmpty()) {
             return EnergyMonitorSnapshot.empty();
         }
 
         BigInteger wiredEnergy = BigInteger.ZERO;
         BigInteger wiredCapacity = BigInteger.ZERO;
-        List<EnergyMonitorRowSnapshot> rows = new ArrayList<>();
+        List<EnergyMonitorRowSnapshot> rows = new ObjectArrayList<>();
 
         for (MetaTileEntity metaTileEntity : EnergyMonitorRegistry.snapshot()) {
             IGregTechTileEntity base = metaTileEntity.getBaseMetaTileEntity();
@@ -187,7 +188,7 @@ public class EnergyMonitorCollector {
             return new VisibleRowsResult(Collections.emptyList(), false);
         }
         int clampedVisible = Math.max(visibleRowCount, 40);
-        List<EnergyMonitorRowSnapshot> visibleRows = new ArrayList<>(clampedVisible);
+        List<EnergyMonitorRowSnapshot> visibleRows = new ObjectArrayList<>(clampedVisible);
         boolean hasMoreRows = false;
         for (EnergyMonitorRowSnapshot row : rows) {
             if (!matchesMode(row, statsMode)) {
@@ -260,7 +261,7 @@ public class EnergyMonitorCollector {
             return row == null ? Collections.emptyList() : List.of(row);
         }
         if (metaTileEntity instanceof MTEMultiBlockBase multiblock) {
-            List<EnergyMonitorRowSnapshot> rows = new ArrayList<>();
+            List<EnergyMonitorRowSnapshot> rows = new ObjectArrayList<>();
             boolean wireless = isWirelessMachine(metaTileEntity);
             ItemStack displayStack = getMachineDisplayStack(metaTileEntity);
             EnergyMonitorRowSnapshot machineRow = buildRow(
@@ -346,7 +347,7 @@ public class EnergyMonitorCollector {
         if (!(base instanceof ICoverable coverable)) {
             return Collections.emptyList();
         }
-        List<EnergyMonitorRowSnapshot> rows = new ArrayList<>();
+        List<EnergyMonitorRowSnapshot> rows = new ObjectArrayList<>();
         for (ForgeDirection side : ForgeDirection.VALID_DIRECTIONS) {
             if (!(coverable.getCoverAtSide(side) instanceof WirelessMultiEnergyCover wirelessCover)) {
                 continue;

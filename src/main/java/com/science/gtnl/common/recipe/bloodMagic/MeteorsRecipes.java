@@ -1,23 +1,22 @@
 package com.science.gtnl.common.recipe.bloodMagic;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.science.gtnl.ScienceNotLeisure;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.utils.enums.GTNLItemList;
+import com.science.gtnl.utils.enums.ModsItemlist;
 
 import WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorRegistry;
 import cpw.mods.fml.common.registry.GameRegistry;
-import gregtech.api.enums.Mods;
-import gregtech.api.util.GTModHandler;
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class MeteorsRecipes implements IRecipePool {
 
@@ -28,17 +27,15 @@ public class MeteorsRecipes implements IRecipePool {
             new String[] { "SGCraft:stargateBase:0:10", "SGCraft:stargateRing:0:10", "SGCraft:stargateRing:1:10",
                 "bartworks:bw.werkstoffblocks.01:25201:10", "SGCraft:ocInterface:0:10", "SGCraft:rfPowerUnit:0:10",
                 "gregtech:gt.blockmachines:21113:10", "gregtech:gt.blockmachines:21008:10",
-                "sciencenotleisure:meta_casing:21:10", "sciencenotleisure:meta_casing:22:10", "IC2:blockNuke:0:10" },
+                ScienceNotLeisure.MODID + ":meta_casing:21:10", ScienceNotLeisure.MODID + ":meta_casing:22:10",
+                "IC2:blockNuke:0:10" },
             10,
             Integer.MAX_VALUE);
 
         List<String> meteorDrops = getTNTMeteor();
 
-        MeteorRegistry.registerMeteor(
-            GTModHandler.getModItem(Mods.IndustrialCraft2.ID, "blockNuke", 1),
-            meteorDrops.toArray(new String[0]),
-            100,
-            114514);
+        MeteorRegistry
+            .registerMeteor(ModsItemlist.IC2BlockNuke.get(1), meteorDrops.toArray(new String[0]), 100, 114514);
 
         MeteorRegistry.registerMeteor(
             GTNLItemList.StargateSingularity.get(1),
@@ -89,16 +86,14 @@ public class MeteorsRecipes implements IRecipePool {
     }
 
     public static @NotNull List<String> getTNTMeteor() {
-        List<String> meteorDrops = new ArrayList<>();
+        List<String> meteorDrops = new ObjectArrayList<>();
 
         meteorDrops.add("miscutils:blockMiningExplosives:0:20");
         meteorDrops.add("IC2:blockITNT:0:20");
         meteorDrops.add("minecraft:tnt:1:15");
         meteorDrops.add("HardcoreEnderExpansion:enhanced_tnt:0:15");
 
-        if (Mods.BloodArsenal.isModLoaded()) {
-            meteorDrops.add("BloodArsenal:blood_tnt:0:15");
-        }
+        addIfRegistered(meteorDrops, "BloodArsenal:blood_tnt:0:15");
 
         meteorDrops.add("EnderZoo:blockConcussionCharge:0:5");
         meteorDrops.add("EnderZoo:blockConfusingCharge:0:5");
@@ -106,19 +101,17 @@ public class MeteorsRecipes implements IRecipePool {
         meteorDrops.add("TConstruct:explosive.slime:0:5");
         meteorDrops.add("TConstruct:explosive.slime:2:5");
 
-        if (Mods.ThaumicHorizons.isModLoaded()) {
-            meteorDrops.add("ThaumicHorizons:alchemite:0:15");
-        }
+        addIfRegistered(meteorDrops, "ThaumicHorizons:alchemite:0:15");
 
         meteorDrops.add("IC2:blockNuke:0:10");
         meteorDrops.add("minecraft:redstone_block:0:1");
         return meteorDrops;
     }
 
-    public static Map<String, Boolean> ORE_DICT_CACHE = new HashMap<>();
+    public static Object2BooleanOpenHashMap<String> ORE_DICT_CACHE = new Object2BooleanOpenHashMap<>();
 
     public static String[] generateAndMergeMetalBlocks(String[] originalFillers) {
-        List<String> metalVariants = new ArrayList<>();
+        List<String> metalVariants = new ObjectArrayList<>();
 
         for (int blockType = 1; blockType <= 9; blockType++) {
             int maxMeta = (blockType == 9) ? 11 : 15;
@@ -142,8 +135,13 @@ public class MeteorsRecipes implements IRecipePool {
         return metalVariants.toArray(new String[0]);
     }
 
+    private static void addIfRegistered(List<String> drops, String entry) {
+        String[] parts = entry.split(":");
+        if (GameRegistry.findItemStack(parts[0], parts[1], 1) != null) drops.add(entry);
+    }
+
     public static boolean isOreDictRegistered(String blockKey) {
-        return ORE_DICT_CACHE.computeIfAbsent(blockKey, k -> {
+        return ORE_DICT_CACHE.computeIfAbsent(blockKey, (String k) -> {
             String[] parts = blockKey.split(":");
             if (parts.length < 3) return false;
             String modId = parts[0];

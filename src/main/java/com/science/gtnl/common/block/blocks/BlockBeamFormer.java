@@ -1,67 +1,41 @@
 package com.science.gtnl.common.block.blocks;
 
-import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
-
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
-import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.IIcon;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
-import com.science.gtnl.client.GTNLCreativeTabs;
-import com.science.gtnl.common.block.blocks.item.ItemBlockBeamFormer;
 import com.science.gtnl.common.block.blocks.tile.TileEntityBeamFormer;
 import com.science.gtnl.common.render.tile.RenderBlockBeamFormer;
-import com.science.gtnl.utils.enums.GTNLItemList;
 
 import appeng.block.AEBaseTileBlock;
 import appeng.core.features.AEFeature;
 import appeng.helpers.ICustomCollision;
 import appeng.util.Platform;
-import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
 public class BlockBeamFormer extends AEBaseTileBlock implements ICustomCollision {
 
-    @SideOnly(Side.CLIENT)
-    public static IIcon iconBase;
-    @SideOnly(Side.CLIENT)
-    public static IIcon iconStatusOff;
-    @SideOnly(Side.CLIENT)
-    public static IIcon iconStatusOn;
-    @SideOnly(Side.CLIENT)
-    public static IIcon iconStatusBeaming;
-    @SideOnly(Side.CLIENT)
-    public static IIcon iconPrism;
-
-    public static final double MIN = 5.0 / 16.0;
-    public static final double MAX = 11.0 / 16.0;
-    public static final double LEN = 5.0 / 16.0;
+    public static final double MIN = 2.0 / 16.0;
+    public static final double MAX = 14.0 / 16.0;
+    public static final double LEN = 13.0 / 16.0;
 
     public BlockBeamFormer() {
         super(Material.iron);
         setHardness(8.0F);
         setResistance(40.0F);
-        setBlockName("gtnl.beam_former");
         setHarvestLevel("pickaxe", 3);
-        setBlockTextureName(RESOURCE_ROOT_ID + ":beam_former");
-        setCreativeTab(GTNLCreativeTabs.GTNotLeisureBlock);
         setLightOpacity(0);
-        GameRegistry.registerBlock(this, ItemBlockBeamFormer.class, "beam_former");
-        GameRegistry.registerTileEntity(TileEntityBeamFormer.class, "beam_former_tile_entity");
-        GTNLItemList.BlockBeamFormer.set(new ItemStack(this, 1));
         this.setTileEntity(TileEntityBeamFormer.class);
         this.setFeature(EnumSet.of(AEFeature.Core));
         this.isOpaque = false;
@@ -80,21 +54,11 @@ public class BlockBeamFormer extends AEBaseTileBlock implements ICustomCollision
     }
 
     @Override
-    @SideOnly(Side.CLIENT)
-    public void registerBlockIcons(IIconRegister register) {
-        iconBase = register.registerIcon(RESOURCE_ROOT_ID + ":part/beam_former_base");
-        iconStatusOff = register.registerIcon(RESOURCE_ROOT_ID + ":part/beam_former_status_off");
-        iconStatusOn = register.registerIcon(RESOURCE_ROOT_ID + ":part/beam_former_status_on");
-        iconStatusBeaming = register.registerIcon(RESOURCE_ROOT_ID + ":part/beam_former_status_beaming");
-        iconPrism = register.registerIcon(RESOURCE_ROOT_ID + ":part/beam_former_prism");
-        super.registerBlockIcons(register);
-    }
-
-    @Override
     public int getLightValue(IBlockAccess world, int x, int y, int z) {
         var te = world.getTileEntity(x, y, z);
         if (te instanceof TileEntityBeamFormer beamFormer) {
-            return beamFormer.isActive() && beamFormer.getBeamLength() > 0 ? 15 : 0;
+            return !beamFormer.isHideBeam() && beamFormer.isActive()
+                && (beamFormer.paired || beamFormer.getOtherBeamFormer() != null) ? 15 : 0;
         }
         return 0;
     }
@@ -118,7 +82,7 @@ public class BlockBeamFormer extends AEBaseTileBlock implements ICustomCollision
     public void breakBlock(World world, int x, int y, int z, Block block, int meta) {
         if (world.getTileEntity(x, y, z) instanceof TileEntityBeamFormer te) {
             te.unregisterListener();
-            te.disconnect(null);
+            te.disconnect();
         }
         super.breakBlock(world, x, y, z, block, meta);
     }

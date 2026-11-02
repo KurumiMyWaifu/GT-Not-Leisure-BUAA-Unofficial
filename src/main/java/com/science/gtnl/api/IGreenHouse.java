@@ -4,26 +4,23 @@ import static gregtech.api.util.GTRecipeBuilder.SECONDS;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.StatCollector;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.fluids.FluidStack;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
 
 import com.gtnewhorizon.cropsnh.api.IGrowthRequirement;
 import com.gtnewhorizon.cropsnh.api.IMachineGrowthRequirement;
+import com.gtnewhorizon.cropsnh.api.IPotencyData;
 import com.gtnewhorizon.cropsnh.api.ISeedData;
 import com.gtnewhorizon.cropsnh.blocks.BlockAdvancedHarvestingUnit;
 import com.gtnewhorizon.cropsnh.blocks.BlockFertilizerUnit;
@@ -34,21 +31,11 @@ import com.gtnewhorizon.cropsnh.farming.requirements.SubSoilRequirement;
 import com.gtnewhorizon.cropsnh.tileentity.TileEntityCropSticks;
 import com.gtnewhorizon.cropsnh.utility.CropsNHUtils;
 import com.gtnewhorizon.cropsnh.utility.IFDropTable;
-import com.gtnewhorizons.modularui.api.ModularUITextures;
-import com.gtnewhorizons.modularui.api.drawable.Text;
-import com.gtnewhorizons.modularui.api.math.Color;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.common.widget.ButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.Column;
-import com.gtnewhorizons.modularui.common.widget.CycleButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
+import com.science.gtnl.common.greenhouse.GreenHouseModes;
 import com.science.gtnl.utils.machine.greenHouseManager.GreenHouseMode;
-import com.science.gtnl.utils.machine.greenHouseManager.GreenHouseModes;
 import com.science.gtnl.utils.machine.greenHouseManager.GreenHouseStoredCrop;
 import com.science.gtnl.utils.machine.greenHouseManager.GreenHouseViewMode;
 
-import gregtech.api.gui.modularui.GTUITextures;
 import gregtech.api.interfaces.IOutputBus;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.interfaces.tileentity.IVoidable;
@@ -57,6 +44,9 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.ItemEjectionHelper;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIntPair;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 public interface IGreenHouse extends IVoidable {
 
@@ -93,6 +83,15 @@ public interface IGreenHouse extends IVoidable {
     int getMaxProgressTime();
 
     void setMaxProgressTime(int time);
+
+    /**
+     * Length of one farm cycle. Crops grow for this long each cycle, so a longer cycle also yields more per cycle.
+     *
+     * @return the cycle length in ticks
+     */
+    default int getCycleDuration() {
+        return CYCLE_DURATION;
+    }
 
     void setLEUt(long lEUt);
 
@@ -445,7 +444,7 @@ public interface IGreenHouse extends IVoidable {
         if (removable <= 0) return CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
 
         List<ItemStack> outputs = createStoredCropOutputs(removable);
-        ItemEjectionHelper ejectionHelper = new ItemEjectionHelper(new ArrayList<>(getOutputBus()), true);
+        ItemEjectionHelper ejectionHelper = new ItemEjectionHelper(new ObjectArrayList<>(getOutputBus()), true);
         if (ejectionHelper.ejectItems(outputs, 1) <= 0) return CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
         ejectionHelper.commit();
 
@@ -486,12 +485,12 @@ public interface IGreenHouse extends IVoidable {
         if (amount <= 0) return false;
         List<ItemStack> outputs = createStoredCropOutputs(amount);
         if (outputs.isEmpty()) return false;
-        ItemEjectionHelper ejectionHelper = new ItemEjectionHelper(new ArrayList<>(getOutputBus()), true);
+        ItemEjectionHelper ejectionHelper = new ItemEjectionHelper(new ObjectArrayList<>(getOutputBus()), true);
         return ejectionHelper.ejectItems(outputs, 1) > 0;
     }
 
     default List<ItemStack> createStoredCropOutputs(int amount) {
-        List<ItemStack> outputs = new ArrayList<>();
+        List<ItemStack> outputs = new ObjectArrayList<>();
         int remaining = amount;
         for (GreenHouseStoredCrop crop : getStoredCrops()) {
             if (remaining <= 0) break;
@@ -552,15 +551,17 @@ public interface IGreenHouse extends IVoidable {
             return skippedBlockUnderCrop ? BLOCK_UNDER_MISMATCH_FARM : CheckRecipeResultRegistry.NO_RECIPE;
         }
 
-        List<Pair<FluidStack, Integer>> waterToConsume = new ArrayList<>();
+        List<ObjectIntPair<FluidStack>> waterToConsume = new ObjectArrayList<>();
         int waterMissing = getWaterUsage();
         for (FluidStack fluidStack : getStoredFluids()) {
             if (CropsNHUtils.isStackInvalid(fluidStack)) continue;
-            int potency = HydrationRegistry.instance.getPotency(fluidStack.getFluid());
-            int amount = getAmountToConsumeBasedOnPotency(waterMissing, potency, fluidStack.amount);
-            if (amount > 0) {
-                waterMissing -= amount * potency;
-                waterToConsume.add(Pair.of(fluidStack, amount));
+            IPotencyData potency = HydrationRegistry.instance.getPotency(fluidStack.getFluid());
+            if (potency == null) continue;
+            int applications = getApplicationCountBasedOnPotency(waterMissing, potency, fluidStack.amount);
+            if (applications > 0) {
+                waterMissing -= applications * potency.getPotency();
+                waterToConsume
+                    .add(ObjectIntPair.of(fluidStack, applications * potency.getUnitsConsumedPerApplication()));
             }
             if (waterMissing <= 0) break;
         }
@@ -568,18 +569,18 @@ public interface IGreenHouse extends IVoidable {
 
         cycleDrops.addTo(getIndustrialFarmDropTracker());
         if (getVoidingMode().protectItem) {
-            ItemEjectionHelper helper = new ItemEjectionHelper(new ArrayList<>(getOutputBus()), true);
+            ItemEjectionHelper helper = new ItemEjectionHelper(new ObjectArrayList<>(getOutputBus()), true);
             ItemStack[] drops = getIndustrialFarmDropTracker().getDrops(true);
             if (drops.length != 0 && helper.ejectItems(Arrays.asList(drops), 1) <= 0) {
                 cycleDrops.addTo(getIndustrialFarmDropTracker(), -1.0d);
                 return CheckRecipeResultRegistry.ITEM_OUTPUT_FULL;
             }
         }
-        waterToConsume.forEach(pair -> pair.getLeft().amount -= pair.getRight());
+        for (ObjectIntPair<FluidStack> pair : waterToConsume) pair.left().amount -= pair.rightInt();
         setIndustrialFarmGuiDropTracker(cycleDrops);
         setGreenHouseOutputItems(getIndustrialFarmDropTracker().getDrops(false));
         setLEUt(-getIndustrialFarmEUt());
-        setMaxProgressTime(CYCLE_DURATION);
+        setMaxProgressTime(getCycleDuration());
         updateSlots();
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }
@@ -611,10 +612,12 @@ public interface IGreenHouse extends IVoidable {
         return CheckRecipeResultRegistry.SUCCESSFUL;
     }
 
-    default int getAmountToConsumeBasedOnPotency(int missingPotency, int inputPotency, int inputAmount) {
-        if (missingPotency <= 0 || inputPotency <= 0 || inputAmount <= 0) return 0;
-        int maxConsume = missingPotency / inputPotency + (missingPotency % inputPotency > 0 ? 1 : 0);
-        return Math.min(maxConsume, inputAmount);
+    default int getApplicationCountBasedOnPotency(int missingPotency, IPotencyData potency, int inputAmount) {
+        int perApplication = potency.getPotency();
+        int unitsPerApplication = potency.getUnitsConsumedPerApplication();
+        if (missingPotency <= 0 || perApplication <= 0 || inputAmount < unitsPerApplication) return 0;
+        int maxApplications = missingPotency / perApplication + (missingPotency % perApplication > 0 ? 1 : 0);
+        return Math.min(maxApplications, inputAmount / unitsPerApplication);
     }
 
     default int getNutrientScore(ISeedData seedData) {
@@ -623,7 +626,8 @@ public interface IGreenHouse extends IVoidable {
         IGregTechTileEntity base = getBaseMetaTileEntity();
         if (base == null) return 0;
         BiomeGenBase biome = base.getBiome();
-        Set<BiomeDictionary.Type> biomeTags = new HashSet<>(Arrays.asList(BiomeDictionary.getTypesForBiome(biome)));
+        Set<BiomeDictionary.Type> biomeTags = new ObjectOpenHashSet<>(
+            Arrays.asList(BiomeDictionary.getTypesForBiome(biome)));
         int likedBiomes = (int) seedData.getCrop()
             .getLikedBiomeTags()
             .stream()
@@ -657,7 +661,7 @@ public interface IGreenHouse extends IVoidable {
             .getGrowthDuration();
         int growthTicksPerHarvest = duration / growthSpeed + (duration % growthSpeed == 0 ? 0 : 1);
         double growthPercentPerGrowthTick = 1.0d / growthTicksPerHarvest;
-        return growthPercentPerGrowthTick * ((double) CYCLE_DURATION / TileEntityCropSticks.TICK_RATE)
+        return growthPercentPerGrowthTick * ((double) getCycleDuration() / TileEntityCropSticks.TICK_RATE)
             * getGrowthSpeedMultiplier();
     }
 
@@ -692,140 +696,6 @@ public interface IGreenHouse extends IVoidable {
             drops.addDrop(stack, unscaled * progressPerCycle);
         }
         return drops;
-    }
-
-    @Deprecated
-    default ModularWindow createConfigurationWindow(final EntityPlayer player) {
-        // TODO: Remove this MUI1 configuration window after greenhouse machines use the MUI2 panel.
-        ModularWindow.Builder builder = ModularWindow.builder(200, 100);
-        builder.setBackground(ModularUITextures.VANILLA_BACKGROUND);
-        builder.widget(
-            new DrawableWidget().setDrawable(GTUITextures.OVERLAY_BUTTON_CYCLIC)
-                .setPos(5, 5)
-                .setSize(16, 16))
-            .widget(
-                new TextWidget(StatCollector.translateToLocal("gtnl.machine.eden_garden.view.configuration"))
-                    .setPos(25, 9))
-            .widget(
-                ButtonWidget.closeWindowButton(true)
-                    .setPos(185, 3))
-            .widget(
-                new Column().widget(
-                    new CycleButtonWidget().setLength(3)
-                        .setGetter(this::getSetupPhase)
-                        .setSetter(val -> {
-                            if (!(player instanceof EntityPlayerMP)) return;
-                            tryChangeSetupPhase(player);
-                        })
-                        .addTooltip(
-                            0,
-                            new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.operating"))
-                                .color(Color.GREEN.dark(3)))
-                        .addTooltip(
-                            1,
-                            new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.input"))
-                                .color(Color.YELLOW.dark(3)))
-                        .addTooltip(
-                            2,
-                            new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.output"))
-                                .color(Color.YELLOW.dark(3)))
-                        .setTextureGetter(
-                            i -> i == 0
-                                ? new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.operating"))
-                                    .color(Color.GREEN.dark(3))
-                                    .withFixedSize(70 - 18, 18, 15, 0)
-                                : i == 1
-                                    ? new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.input"))
-                                        .color(Color.YELLOW.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0)
-                                    : new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.output"))
-                                        .color(Color.YELLOW.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0))
-                        .setBackground(
-                            ModularUITextures.VANILLA_BACKGROUND,
-                            GTUITextures.OVERLAY_BUTTON_CYCLIC.withFixedSize(18, 18))
-                        .setSize(70, 18)
-                        .addTooltip(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.setup")))
-                    .widget(
-                        new CycleButtonWidget().setLength(2)
-                            .setGetter(
-                                () -> this.getMode()
-                                    .getUIIndex())
-                            .setSetter(val -> {
-                                if (!(player instanceof EntityPlayerMP)) return;
-                                tryChangeMode(player);
-                            })
-                            .addTooltip(
-                                0,
-                                new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.disabled"))
-                                    .color(Color.RED.dark(3)))
-                            .addTooltip(
-                                1,
-                                new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.enabled"))
-                                    .color(Color.GREEN.dark(3)))
-                            .setTextureGetter(
-                                i -> i == 0
-                                    ? new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.disabled"))
-                                        .color(Color.RED.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0)
-                                    : new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.enabled"))
-                                        .color(Color.GREEN.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0))
-                            .setBackground(
-                                ModularUITextures.VANILLA_BACKGROUND,
-                                GTUITextures.OVERLAY_BUTTON_CYCLIC.withFixedSize(18, 18))
-                            .setSize(70, 18)
-                            .addTooltip(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.ic2")))
-                    .widget(
-                        new CycleButtonWidget().setLength(2)
-                            .setGetter(() -> isUseNoHumidity() ? 1 : 0)
-                            .setSetter(val -> {
-                                if (!(player instanceof EntityPlayerMP)) return;
-                                this.tryChangeHumidityMode(player);
-                            })
-                            .addTooltip(
-                                0,
-                                new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.disabled"))
-                                    .color(Color.RED.dark(3)))
-                            .addTooltip(
-                                1,
-                                new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.enabled"))
-                                    .color(Color.GREEN.dark(3)))
-                            .setTextureGetter(
-                                i -> i == 0
-                                    ? new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.disabled"))
-                                        .color(Color.RED.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0)
-                                    : new Text(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.enabled"))
-                                        .color(Color.GREEN.dark(3))
-                                        .withFixedSize(70 - 18, 18, 15, 0))
-                            .setBackground(
-                                ModularUITextures.VANILLA_BACKGROUND,
-                                GTUITextures.OVERLAY_BUTTON_CYCLIC.withFixedSize(18, 18))
-                            .setSize(70, 18)
-                            .addTooltip(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.no_humidity")))
-                    .setEnabled(widget -> !getBaseMetaTileEntity().isActive())
-                    .setPos(10, 30))
-            .widget(
-                new Column()
-                    .widget(
-                        new TextWidget(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.setup"))
-                            .setSize(100, 18))
-                    .widget(
-                        new TextWidget(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.ic2"))
-                            .setSize(100, 18))
-                    .widget(
-                        new TextWidget(StatCollector.translateToLocal("gtnl.machine.eden_garden.mode.no_humidity"))
-                            .setSize(100, 18))
-                    .setEnabled(widget -> !getBaseMetaTileEntity().isActive())
-                    .setPos(80, 30))
-            .widget(
-                new DrawableWidget().setDrawable(GTUITextures.OVERLAY_BUTTON_CROSS)
-                    .setSize(18, 18)
-                    .setPos(10, 30)
-                    .addTooltip(new Text("Can't change configuration when running !").color(Color.RED.dark(3)))
-                    .setEnabled(widget -> getBaseMetaTileEntity().isActive()));
-        return builder.build();
     }
 
     default void tryChangeMode(EntityPlayer aPlayer) {

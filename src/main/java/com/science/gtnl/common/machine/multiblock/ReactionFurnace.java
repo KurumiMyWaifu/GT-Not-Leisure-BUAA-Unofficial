@@ -5,11 +5,9 @@ import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
@@ -19,12 +17,13 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.hatch.ParallelControllerHatch;
 import com.science.gtnl.common.machine.monitor.EnergyMonitorCustomWirelessEutProvider;
 import com.science.gtnl.common.machine.multiMachineBase.WirelessEnergyMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 
 import gregtech.api.casing.Casings;
@@ -44,6 +43,7 @@ import gregtech.api.util.GTModHandler;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.WirelessNetworkManager;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
@@ -81,20 +81,19 @@ public class ReactionFurnace extends WirelessEnergyMultiMachineBase<ReactionFurn
     }
 
     @Override
+    protected TooltipStats readTooltipStats() {
+        return new TooltipStats(super.readTooltipStats().parallels(), Double.NaN, Double.NaN, false, true);
+    }
+
+    @Override
+    protected boolean overclocksPerfectlyInWirelessMode() {
+        return false;
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.reaction_furnace.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.wireless.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.wireless.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.wireless.tooltip.9"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.1"))
-            .addSupportAny()
-            .beginStructureBlock(31, 21, 29, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.reaction_furnace.tooltip.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }
@@ -145,7 +144,7 @@ public class ReactionFurnace extends WirelessEnergyMultiMachineBase<ReactionFurn
     @NotNull
     public CheckRecipeResult checkProcessing() {
         costingEU = BigInteger.ZERO;
-        costingEUText = Utils.ZERO_STRING;
+        costingEUText = MathUtils.ZERO_STRING;
         List<ItemStack> tInput = getAllStoredInputs();
 
         if (tInput.isEmpty()) {
@@ -157,7 +156,7 @@ public class ReactionFurnace extends WirelessEnergyMultiMachineBase<ReactionFurn
         long availableEUt;
 
         if (wirelessMode) {
-            availableEUt = Utils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
+            availableEUt = MathUtils.toLongSafe(WirelessNetworkManager.getUserEU(ownerUUID));
 
             if (availableEUt < 4) {
                 return CheckRecipeResultRegistry.insufficientPower(4);
@@ -228,11 +227,11 @@ public class ReactionFurnace extends WirelessEnergyMultiMachineBase<ReactionFurn
         } else {
             costingEU = BigInteger.valueOf(finalParallel)
                 .multiply(BigInteger.valueOf(4L));
-            WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, costingEU.multiply(Utils.NEGATIVE_ONE));
+            WirelessNetworkManager.addEUToGlobalEnergyMap(ownerUUID, costingEU.multiply(MathUtils.NEGATIVE_ONE));
             this.lEUt = 0;
         }
 
-        ArrayList<ItemStack> smeltedOutputs = new ArrayList<>();
+        ObjectArrayList<ItemStack> smeltedOutputs = new ObjectArrayList<>();
         long toSmelt = finalParallel;
 
         for (ItemStack item : tInput) {

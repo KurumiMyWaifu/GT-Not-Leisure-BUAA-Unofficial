@@ -6,7 +6,6 @@ import static com.science.gtnl.utils.enums.BlockIcons.OVERLAY_FRONT_ITEMVAULTPOR
 
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -54,14 +53,17 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.render.TextureFactory;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 public class VaultPortHatch extends MTEHatch
     implements ICellContainer, IGridProxyable, IActionHost, IPowerChannelState, IMEConnectable {
 
     public IStackVault controller;
     public AENetworkProxy gridProxy = null;
     public BaseActionSource machineSource = new MachineSource(this);
-    private final Map<IAEStackType<?>, List<IMEInventoryHandler>> handlers = new IdentityHashMap<>();
+    private final Map<IAEStackType<?>, List<IMEInventoryHandler>> handlers = new Reference2ObjectOpenHashMap<>();
 
     public VaultPortHatch(int aID, String aName, String aNameRegional) {
         super(
@@ -75,6 +77,18 @@ public class VaultPortHatch extends MTEHatch
 
     public VaultPortHatch(String aName, int aTier, String[] aDescription, ITexture[][][] aTextures) {
         super(aName, aTier, 0, aDescription, aTextures);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.vault_port.name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override

@@ -11,9 +11,9 @@ import com.science.gtnl.common.machine.multiblock.FOGAlloyBlastSmelterModule;
 import com.science.gtnl.common.machine.multiblock.FOGAlloySmelterModule;
 import com.science.gtnl.common.machine.multiblock.FOGExtractorModule;
 import com.science.gtnl.common.machine.multiblock.FOGSolarMuonCatalystModule;
+import com.science.gtnl.common.machine.multiblock.GodforgeModuleHooks;
 
 import tectech.thing.metaTileEntity.multi.godforge.MTEBaseModule;
-import tectech.thing.metaTileEntity.multi.godforge.upgrade.ForgeOfGodsUpgrade;
 import tectech.thing.metaTileEntity.multi.godforge.util.ForgeOfGodsData;
 import tectech.thing.metaTileEntity.multi.godforge.util.GodforgeMath;
 
@@ -21,33 +21,23 @@ import tectech.thing.metaTileEntity.multi.godforge.util.GodforgeMath;
 public abstract class MixinGodForgeMath {
 
     @Inject(method = "allowModuleConnection", at = @At("HEAD"), cancellable = true)
-    private static void recipesLoader(MTEBaseModule module, ForgeOfGodsData data, CallbackInfoReturnable<Boolean> cir) {
-        if (module instanceof FOGAlloySmelterModule) {
-            cir.setReturnValue(true);
-            return;
-        }
-        if ((module instanceof FOGAlloyBlastSmelterModule || module instanceof FOGExtractorModule)
-            && data.isUpgradeActive(ForgeOfGodsUpgrade.FDIM)) {
-            cir.setReturnValue(true);
-            return;
-        }
-        if (module instanceof FOGSolarMuonCatalystModule && data.isUpgradeActive(ForgeOfGodsUpgrade.QGPIU)) {
-            cir.setReturnValue(true);
-        }
+    private static void recipesLoader(MTEBaseModule _module, ForgeOfGodsData data,
+        CallbackInfoReturnable<Boolean> cir) {
+        if (GodforgeModuleHooks.connects(_module, data)) cir.setReturnValue(true);
     }
 
     @ModifyConstant(
         method = "calculateMaxParallelForModules(Ltectech/thing/metaTileEntity/multi/godforge/MTEBaseModule;Ltectech/thing/metaTileEntity/multi/godforge/util/ForgeOfGodsData;I)V",
         constant = @Constant(intValue = 0, ordinal = 0))
-    private static int onCalculateMaxParallelForModules(int constant, MTEBaseModule module, ForgeOfGodsData data,
+    private static int onCalculateMaxParallelForModules(int constant, MTEBaseModule _module, ForgeOfGodsData data,
         int fuelFactor) {
-        if (module instanceof FOGAlloySmelterModule) {
+        if (_module instanceof FOGAlloySmelterModule) {
             return 4096;
-        } else if (module instanceof FOGExtractorModule) {
+        } else if (_module instanceof FOGExtractorModule) {
             return 2048;
-        } else if (module instanceof FOGAlloyBlastSmelterModule) {
+        } else if (_module instanceof FOGAlloyBlastSmelterModule) {
             return 512;
-        } else if (module instanceof FOGSolarMuonCatalystModule) {
+        } else if (_module instanceof FOGSolarMuonCatalystModule) {
             return 256;
         }
         return constant;

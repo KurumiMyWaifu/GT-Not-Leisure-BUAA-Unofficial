@@ -3,11 +3,9 @@ package com.science.gtnl.common.machine.multiblock;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.CustomHatchElement.ParallelCon;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -20,6 +18,7 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.api.casing.GTNLCasings;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.common.recipe.gtnl.MatterFabricatorRecipes;
 import com.science.gtnl.utils.StructureUtils;
@@ -44,6 +43,7 @@ import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gtnhlanth.common.register.LanthItemList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import tectech.thing.casing.BlockGTCasingsTT;
 
 @IMetaTileEntity.SkipGenerateDescription
@@ -199,7 +199,7 @@ public class MatterFabricator extends GTMMultiMachineBase<MatterFabricator> impl
         if (!foundValidInput || totalOutput == 0) return CheckRecipeResultRegistry.NO_RECIPE;
 
         if (hasCircuit1) {
-            List<ItemStack> outputItems = new ArrayList<>();
+            List<ItemStack> outputItems = new ObjectArrayList<>();
             long remaining = totalOutput;
             while (remaining > 0) {
                 int stackSize = (int) Math.min(remaining, Integer.MAX_VALUE);
@@ -208,7 +208,7 @@ public class MatterFabricator extends GTMMultiMachineBase<MatterFabricator> impl
             }
             mOutputItems = outputItems.toArray(new ItemStack[0]);
         } else {
-            List<FluidStack> outputFluids = new ArrayList<>();
+            List<FluidStack> outputFluids = new ObjectArrayList<>();
             long fluidAmount = totalOutput * 100000L;
             while (fluidAmount > 0) {
                 int amount = (int) Math.min(fluidAmount, Integer.MAX_VALUE);
@@ -251,16 +251,8 @@ public class MatterFabricator extends GTMMultiMachineBase<MatterFabricator> impl
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.matter_fabricator.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addSupportAny()
-            .beginStructureBlock(15, 5, 6, true)
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.matter_fabricator.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.matter_fabricator.casing"))
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.matter_fabricator.casing"))
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.matter_fabricator.casing"))
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

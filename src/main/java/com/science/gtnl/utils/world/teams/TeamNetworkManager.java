@@ -3,9 +3,9 @@ package com.science.gtnl.utils.world.teams;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +26,9 @@ import com.gtnewhorizon.gtnhlib.util.ServerPlayerUtils;
 import com.mojang.authlib.GameProfile;
 import com.science.gtnl.ScienceNotLeisure;
 
+import gregtech.common.misc.spaceprojects.SpaceProjectManager;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+
 public class TeamNetworkManager {
 
     private static final String LEGACY_DATA_FILE = "GT_SpaceProjectData.dat";
@@ -34,7 +37,10 @@ public class TeamNetworkManager {
     private static final String MEMBER_UUID_TAG = "MEMBER_UUID";
     private static final String LEADER_UUID_TAG = "LEADER_UUID";
 
-    private TeamNetworkManager() {}
+    // GT's wireless EU still keys accounts by SpaceProjectManager's leader; use this so GTNL charges the same account.
+    public static UUID wirelessEnergyOwner(UUID playerId) {
+        return SpaceProjectManager.getLeader(playerId);
+    }
 
     public static Team getOrCreateTeam(UUID playerId) {
         return TeamManager.getOrCreateTeam(getPlayerName(playerId), playerId);
@@ -67,6 +73,13 @@ public class TeamNetworkManager {
         if (memberTeam.getTeamId()
             .equals(targetTeam.getTeamId())) {
             return false;
+        }
+
+        // Match GTNHLib's solo-team join: merge the team and notify all data owners.
+        if (memberTeam.getMembers()
+            .size() == 1) {
+            TeamManager.mergeTeams(targetTeam, memberTeam);
+            return true;
         }
 
         TeamManager.transferTeamData(memberTeam, targetTeam, memberId, TeamDataTransferReason.JoinedExistingTeam);
@@ -148,27 +161,27 @@ public class TeamNetworkManager {
         }
 
         return new LegacyTeamReadResult(
-            new HashMap<>(),
+            new Object2ObjectOpenHashMap<>(),
             dataFileTeams.readSuccessfully() && jsonTeams.readSuccessfully());
     }
 
     private static LegacyTeamReadResult readLegacyTeamsFromDataFile(File dataFile) {
         if (!dataFile.isFile()) {
-            return new LegacyTeamReadResult(new HashMap<>(), true);
+            return new LegacyTeamReadResult(new Object2ObjectOpenHashMap<>(), true);
         }
-        try {
-            NBTTagCompound rootTag = CompressedStreamTools.read(dataFile);
+        try (InputStream input = Files.newInputStream(dataFile.toPath())) {
+            NBTTagCompound rootTag = CompressedStreamTools.readCompressed(input);
             NBTTagCompound dataTag = rootTag.hasKey("data") ? rootTag.getCompoundTag("data") : rootTag;
             return new LegacyTeamReadResult(parseLegacyTeams(dataTag.getString(LEGACY_TEAMS_TAG)), true);
         } catch (IOException | RuntimeException exception) {
             ScienceNotLeisure.LOG.warn("Unable to read legacy team data from {}", dataFile);
-            return new LegacyTeamReadResult(new HashMap<>(), false);
+            return new LegacyTeamReadResult(new Object2ObjectOpenHashMap<>(), false);
         }
     }
 
     private static LegacyTeamReadResult readLegacyTeamsFromJson(File teamsFile) {
         if (!teamsFile.isFile()) {
-            return new LegacyTeamReadResult(new HashMap<>(), true);
+            return new LegacyTeamReadResult(new Object2ObjectOpenHashMap<>(), true);
         }
         try (BufferedReader reader = Files.newBufferedReader(teamsFile.toPath(), StandardCharsets.UTF_8)) {
             return new LegacyTeamReadResult(
@@ -178,12 +191,12 @@ public class TeamNetworkManager {
                 true);
         } catch (IOException | RuntimeException exception) {
             ScienceNotLeisure.LOG.warn("Unable to read legacy team JSON from {}", teamsFile);
-            return new LegacyTeamReadResult(new HashMap<>(), false);
+            return new LegacyTeamReadResult(new Object2ObjectOpenHashMap<>(), false);
         }
     }
 
     private static Map<UUID, UUID> parseLegacyTeams(String encodedTeams) {
-        Map<UUID, UUID> teams = new HashMap<>();
+        Map<UUID, UUID> teams = new Object2ObjectOpenHashMap<>();
         if (encodedTeams == null || encodedTeams.isEmpty()) {
             return teams;
         }

@@ -3,12 +3,10 @@ package com.science.gtnl.common.machine.multiblock.structuralReconstructionPlan;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.CustomHatchElement.ParallelCon;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -20,6 +18,7 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.multiMachineBase.GTMMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 
@@ -42,6 +41,7 @@ import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.misc.GTStructureChannels;
 import gtPlusPlus.xmod.gregtech.common.blocks.textures.TexturesGtBlock;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @IMetaTileEntity.SkipGenerateDescription
 @IMetaTileEntity.SkipGenerateName
@@ -187,9 +187,8 @@ public class MegaAlloyBlastSmelter extends GTMMultiMachineBase<MegaAlloyBlastSme
     }
 
     @Override
-    public void setupProcessingLogic(ProcessingLogic logic) {
-        super.setupProcessingLogic(logic);
-        logic.setUnlimitedTierSkips();
+    public int getMaxTierSkip() {
+        return UNLIMITED_TIER_SKIPS;
     }
 
     @Override
@@ -206,7 +205,7 @@ public class MegaAlloyBlastSmelter extends GTMMultiMachineBase<MegaAlloyBlastSme
         if (!result.wasSuccessful()) return result;
 
         if (mOutputItems != null) {
-            ArrayList<ItemStack> itemList = new ArrayList<>();
+            List<ItemStack> itemList = new ObjectArrayList<>();
 
             for (ItemStack itemStack : mOutputItems) {
                 if (itemStack == null) continue;
@@ -232,7 +231,7 @@ public class MegaAlloyBlastSmelter extends GTMMultiMachineBase<MegaAlloyBlastSme
         }
 
         if (mOutputFluids != null) {
-            ArrayList<FluidStack> fluidList = new ArrayList<>();
+            List<FluidStack> fluidList = new ObjectArrayList<>();
 
             for (FluidStack fluidStack : mOutputFluids) {
                 if (fluidStack == null) continue;
@@ -285,33 +284,8 @@ public class MegaAlloyBlastSmelter extends GTMMultiMachineBase<MegaAlloyBlastSme
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.5"))
-            .addPerfectOCInfo()
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.common.gtm.tooltip.3"))
-            .addSupportAny()
-            .beginStructureBlock(11, 18, 11, true)
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addOutputHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addInputBus("0+", StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addOutputBus("0+", StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addEnergyHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addMaintenanceHatch(
-                "0+",
-                StatCollector.translateToLocal("gtnl.machine.mega_alloy_blast_smelter.tooltip.casing"))
-            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
-            .addSubChannelUsage(GTStructureChannels.HEATING_COIL)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

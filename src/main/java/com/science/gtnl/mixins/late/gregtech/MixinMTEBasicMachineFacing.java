@@ -55,6 +55,11 @@ public abstract class MixinMTEBasicMachineFacing extends MTEBasicTank {
     }
 
     @Override
+    public boolean isLiquidOutput(ForgeDirection side) {
+        return true;
+    }
+
+    @Override
     public boolean allowCoverOnSide(ForgeDirection side, ItemStack coverItem) {
         return CoverRegistry.getCoverPlacer(coverItem)
             .isGuiClickable();
@@ -72,13 +77,11 @@ public abstract class MixinMTEBasicMachineFacing extends MTEBasicTank {
         if (aIndex < getInputSlot()) return false;
         if (aIndex >= getInputSlot() + mInputSlotCount) return false;
         if (!mAllowInputFromOutputSide && side == aBaseMetaTileEntity.getFrontFacing()) return false;
-
         for (int i = getInputSlot(), j = i + mInputSlotCount; i < j; i++) {
             if (GTUtility.areStacksEqual(GTOreDictUnificator.get(aStack), mInventory[i]) && mDisableMultiStack) {
                 return i == aIndex;
             }
         }
-
         return mDisableFilter || allowPutStackValidated(aBaseMetaTileEntity, aIndex, side, aStack);
     }
 }

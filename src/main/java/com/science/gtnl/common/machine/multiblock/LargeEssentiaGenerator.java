@@ -3,14 +3,12 @@ package com.science.gtnl.common.machine.multiblock;
 import static com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase.CustomHatchElement.ExoticDynamo;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.StatCollector;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
@@ -29,8 +27,9 @@ import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.block.blocks.tile.TileEntityEssentiaHatch;
 import com.science.gtnl.common.machine.multiMachineBase.MultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
+import com.science.gtnl.common.recipe.thaumcraft.EssentiaSupply;
 import com.science.gtnl.utils.enums.GTNLItemList;
-import com.science.gtnl.utils.machine.LargeEssentiaEnergyData;
 import com.science.gtnl.utils.structure.GTNLStructureErrors;
 
 import bartworks.system.material.WerkstoffLoader;
@@ -58,6 +57,7 @@ import gregtech.common.misc.GTStructureChannels;
 import gtPlusPlus.core.fluids.GTPPFluids;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import thaumcraft.api.aspects.Aspect;
 import thaumcraft.api.aspects.AspectList;
 import thaumcraft.common.config.ConfigBlocks;
@@ -98,7 +98,7 @@ public class LargeEssentiaGenerator extends MultiMachineBase<LargeEssentiaGenera
     public int mUpgrade = 1;
 
     public final XSTR random = new XSTR();
-    public List<TileEntityEssentiaHatch> mEssentiaHatch = new ArrayList<>();
+    public List<TileEntityEssentiaHatch> mEssentiaHatch = new ObjectArrayList<>();
 
     public LargeEssentiaGenerator(int id, String name, String nameRegional) {
         super(id, name, nameRegional);
@@ -150,9 +150,7 @@ public class LargeEssentiaGenerator extends MultiMachineBase<LargeEssentiaGenera
 
     @Override
     public void checkHatch(List<StructureError> errors) {
-        if (mDynamoHatches.size() + mExoticDynamoHatches.size() != 1) {
-            errors.add(GTNLStructureErrors.invalidHatchConfiguration());
-        }
+        checkHatchExact(errors, HatchElement.Dynamo.or(ExoticDynamo), 1);
         for (MTEHatchInput tHatch : mInputHatches) {
             if (tHatch.mTier > mTierLimit) {
                 errors.add(GTNLStructureErrors.invalidHatchConfiguration());
@@ -216,11 +214,7 @@ public class LargeEssentiaGenerator extends MultiMachineBase<LargeEssentiaGenera
                         .hint(1)
                         .build(),
                     Casings.MagicCasing.asElement(),
-                    StructureUtility.ofSpecificTileAdder(
-                        LargeEssentiaGenerator::addEssentiaHatch,
-                        TileEntityEssentiaHatch.class,
-                        Loaders.magicCasing,
-                        0)))
+                    EssentiaSupply.hatchElement(LargeEssentiaGenerator::addEssentiaHatch, Loaders.magicCasing, 0)))
             .build();
     }
 
@@ -596,25 +590,14 @@ public class LargeEssentiaGenerator extends MultiMachineBase<LargeEssentiaGenera
     }
 
     @Override
+    public TooltipStats getTooltipStats() {
+        return null;
+    }
+
+    @Override
     public MultiblockTooltipBuilder createTooltip() {
-        final MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.info.6"))
-            .beginStructureBlock(9, 3, 9, true)
-            .addMaintenanceHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.casing"))
-            .addInputHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.casing"))
-            .addDynamoHatch("0+", StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.casing"))
-            .addOtherStructurePart(
-                StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.essentia_input_hatch"),
-                StatCollector.translateToLocal("gtnl.machine.large_essentia_generator.casing"),
-                1)
-            .addSubChannelUsage(GTStructureChannels.TIER_MACHINE_CASING)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

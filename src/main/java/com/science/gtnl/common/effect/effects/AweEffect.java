@@ -1,6 +1,5 @@
 package com.science.gtnl.common.effect.effects;
 
-import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
@@ -11,16 +10,21 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.StatCollector;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingEvent;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
+import com.gtnewhorizon.gtnhlib.eventbus.Phase;
 import com.science.gtnl.common.effect.EffectBase;
+import com.science.gtnl.loader.EffectLoader;
+import com.science.gtnl.utils.ColorUtils;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+@EventBusSubscriber(phase = Phase.PRE)
 public class AweEffect extends EffectBase {
 
     public static final DamageSource awe_damage = new DamageSource("damage.gtnl.awe").setExplosion()
@@ -29,19 +33,18 @@ public class AweEffect extends EffectBase {
         .setDamageAllowedInCreativeMode()
         .setMagicDamage();
 
-    private static final Set<EntityPlayer> affectedPlayers = new HashSet<>();
+    private static final Set<EntityPlayer> affectedPlayers = new ObjectOpenHashSet<>();
     private static final Random random = new Random();
 
     public AweEffect(int id) {
-        super(id, "awe", false, 0xFF00FF, 1);
-        MinecraftForge.EVENT_BUS.register(this);
+        super(id, "awe", false, ColorUtils.rgb(ColorUtils.effectAwe), 1);
     }
 
     @SubscribeEvent
     @SideOnly(Side.CLIENT)
-    public void onPlayerUpdate(LivingEvent.LivingUpdateEvent event) {
+    public static void onPlayerUpdate(LivingEvent.LivingUpdateEvent event) {
         if (event.entity instanceof EntityPlayer player) {
-            PotionEffect effect = player.getActivePotionEffect(this);
+            PotionEffect effect = player.getActivePotionEffect(EffectLoader.awe);
 
             if (effect != null && !player.capabilities.isCreativeMode) {
                 int level = effect.getAmplifier();

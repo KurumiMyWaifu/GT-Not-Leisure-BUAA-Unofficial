@@ -2,6 +2,7 @@ package com.science.gtnl.utils.recipes;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.function.Function;
@@ -11,8 +12,7 @@ import net.minecraftforge.fluids.FluidStack;
 
 import org.jetbrains.annotations.NotNull;
 
-import com.science.gtnl.config.MainConfig;
-import com.science.gtnl.utils.enums.ModList;
+import com.science.gtnl.compat.overpowered.RecipeOutputChance;
 
 import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.tileentity.IRecipeLockable;
@@ -27,6 +27,7 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.ParallelHelper;
 import gregtech.api.util.VoidProtectionHelper;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @SuppressWarnings({ "unused", "UnusedReturnValue" })
 public class GTNLParallelHelper extends ParallelHelper {
@@ -66,6 +67,8 @@ public class GTNLParallelHelper extends ParallelHelper {
      * The maximum possible parallel possible for the multiblock
      */
     public int maxParallel = 1;
+    /** Total recipe runs allowed, including sub-tick overclocking and batch mode. */
+    private int maxTotalParallel = Integer.MAX_VALUE;
     /**
      * The Batch Modifier applied when batch mode is enabled. 1 does nothing. 2 doubles max possible
      * parallel, but also duration
@@ -263,6 +266,11 @@ public class GTNLParallelHelper extends ParallelHelper {
         return this;
     }
 
+    public GTNLParallelHelper setMaxTotalParallel(int maxTotalParallel) {
+        this.maxTotalParallel = Math.max(0, maxTotalParallel);
+        return this;
+    }
+
     /**
      * Enables Batch mode. Can do up to an additional processed recipes of mCurrentParallel * mBatchModifier A batch
      * modifier of 1 does nothing
@@ -410,7 +418,7 @@ public class GTNLParallelHelper extends ParallelHelper {
      */
     @Override
     public void determineParallel() {
-        if (!ModList.Overpowered.isModLoaded() && MainConfig.machine.enableRecipeOutputChance) {
+        if (RecipeOutputChance.enabled()) {
             // Compute optional bonus based on machine and current EU/t
             OptionalDouble bonusOptional = ChanceBonusManager
                 .getChanceBonusOptional(machine, GTUtility.getTier(recipe.mEUt), chanceMultiplier, recipe);
@@ -470,6 +478,8 @@ public class GTNLParallelHelper extends ParallelHelper {
         if (batchMode) {
             maxParallel = GTUtility.safeInt((long) maxParallel * batchModifier, 0);
         }
+        // Apply external resource budgets before either locked or ordinary recipes consume inputs.
+        maxParallel = Math.min(maxParallel, maxTotalParallel);
 
         final ItemStack[] truncatedItemOutputs = recipe.mOutputs != null
             ? Arrays.copyOfRange(recipe.mOutputs, 0, Math.min(machine.getItemOutputLimit(), recipe.mOutputs.length))
@@ -661,7 +671,7 @@ public class GTNLParallelHelper extends ParallelHelper {
                     .calculate(recipe, maxExtraParallels, fluidInputs, itemInputs);
                 inputConsumer.consume(recipe, tExtraParallels, fluidInputs, itemInputs);
             }
-            durationMultiplier = 1.0f + (float) tExtraParallels / currentParallel;
+            durationMultiplier = 1.0D + (double) tExtraParallels / currentParallel;
             currentParallel += tExtraParallels;
         }
 
@@ -696,7 +706,7 @@ public class GTNLParallelHelper extends ParallelHelper {
             return;
         }
         if (truncatedItemOutputs.length == 0) return;
-        ArrayList<ItemStack> itemOutputsList = new ArrayList<>();
+        List<ItemStack> itemOutputsList = new ObjectArrayList<>();
         for (int i = 0; i < truncatedItemOutputs.length; i++) {
             if (recipe.getOutput(i) == null) continue;
             ItemStack origin = recipe.getOutput(i)
@@ -718,7 +728,7 @@ public class GTNLParallelHelper extends ParallelHelper {
             return;
         }
         if (truncatedFluidOutputs.length == 0) return;
-        ArrayList<FluidStack> fluidOutputsList = new ArrayList<>();
+        List<FluidStack> fluidOutputsList = new ObjectArrayList<>();
         for (int i = 0; i < truncatedFluidOutputs.length; i++) {
             if (recipe.getFluidOutput(i) == null) continue;
             FluidStack origin = recipe.getFluidOutput(i)
@@ -773,6 +783,10 @@ public class GTNLParallelHelper extends ParallelHelper {
     }
 
     public static void addItemsLong(ArrayList<ItemStack> itemList, ItemStack origin, long amount) {
+        addItemsLong((List<ItemStack>) itemList, origin, amount);
+    }
+
+    public static void addItemsLong(List<ItemStack> itemList, ItemStack origin, long amount) {
         if (amount > 0) {
             while (amount > Integer.MAX_VALUE) {
                 itemList.add(GTUtility.copyAmountUnsafe(Integer.MAX_VALUE, origin));
@@ -783,6 +797,10 @@ public class GTNLParallelHelper extends ParallelHelper {
     }
 
     public static void addFluidsLong(ArrayList<FluidStack> fluidList, FluidStack origin, long amount) {
+        addFluidsLong((List<FluidStack>) fluidList, origin, amount);
+    }
+
+    public static void addFluidsLong(List<FluidStack> fluidList, FluidStack origin, long amount) {
         if (amount > 0) {
             while (amount > Integer.MAX_VALUE) {
                 fluidList.add(GTUtility.copyAmount(Integer.MAX_VALUE, origin));

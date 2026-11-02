@@ -1,434 +1,55 @@
 package com.science.gtnl;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.ForgeDirection;
 
-import com.science.gtnl.common.block.blocks.tile.TileEntityDirePatternEncoder;
-import com.science.gtnl.common.block.blocks.tile.TileEntityEssentiaHatch;
-import com.science.gtnl.common.block.blocks.tile.TileEntityMEChisel;
-import com.science.gtnl.common.block.blocks.tile.TileEntityMultiEssentiaJar;
-import com.science.gtnl.common.block.blocks.tile.TileEntityMultiEssentiaTube;
-import com.science.gtnl.common.block.blocks.tile.TileEntitySuperDualInterface;
-import com.science.gtnl.common.block.blocks.tile.TileEntitySuperInterface;
-import com.science.gtnl.common.entity.EntityParticleBeam;
-import com.science.gtnl.common.item.cellworkbench.PortableCellWorkbenchContainer;
-import com.science.gtnl.common.item.cellworkbench.PortableCellWorkbenchGuiFactory;
-import com.science.gtnl.common.item.cellworkbench.PortableCellWorkbenchHost;
-import com.science.gtnl.common.item.items.PortableChestType;
-import com.science.gtnl.common.machine.hatch.SuperCraftingInputHatchME;
-import com.science.gtnl.common.machine.multiblock.AssemblerMatrix;
-import com.science.gtnl.common.packet.NetWorkHandler;
-import com.science.gtnl.common.part.PartActiveFormationPlane;
-import com.science.gtnl.common.part.PartMECellDock;
-import com.science.gtnl.common.part.PartSuperDualInterface;
-import com.science.gtnl.common.part.PartSuperInterface;
-import com.science.gtnl.common.recipe.gtnl.ExtremeExtremeEntityCrusherRecipes;
-import com.science.gtnl.common.recipe.thaumcraft.TCResearches;
-import com.science.gtnl.common.world.GTNLWorldgenloader;
-import com.science.gtnl.common.world.VoidWorldHandler;
-import com.science.gtnl.common.world.WorldListener;
-import com.science.gtnl.container.ContainerActiveFormationPlane;
-import com.science.gtnl.container.ContainerCustomPriority;
-import com.science.gtnl.container.ContainerDirePatternEncoder;
-import com.science.gtnl.container.ContainerMECellDock;
-import com.science.gtnl.container.ContainerMEChisel;
-import com.science.gtnl.container.ContainerSuperDualInterfaceFluid;
-import com.science.gtnl.container.ContainerSuperInterface;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableAdvancedWorkbench;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableAnvil;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableBasicWorkbench;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableChest;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableCompressedChest;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableEnchanting;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableEnderChest;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableFurnace;
-import com.science.gtnl.container.portableWorkbench.ContainerPortableInfinityChest;
-import com.science.gtnl.loader.ItemLoader;
-import com.science.gtnl.loader.MaterialLoader;
-import com.science.gtnl.utils.enums.GTNLItemList;
-import com.science.gtnl.utils.enums.GuiType;
-import com.science.gtnl.utils.event.SubscribeEventUtils;
-import com.science.gtnl.utils.machine.VMTweakHelper;
-import com.science.gtnl.utils.recipes.CraftingUnitHandler;
+import com.science.gtnl.common.gui.GTNLGuiHandler;
+import com.science.gtnl.common.render.entity.EntityParticleBeam;
+import com.science.gtnl.loader.ContentLoaders;
 
-import appeng.api.AEApi;
-import appeng.api.config.Upgrades;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.container.ContainerOpenContext;
-import appeng.helpers.IPriorityHost;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.Optional;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.network.IGuiHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
-import gregtech.api.enums.Mods;
-import thaumicenergistics.api.ThEApi;
 
 public class CommonProxy implements IGuiHandler {
 
-    public static final SubscribeEventUtils SUBSCRIBE_EVENT_UTILS = new SubscribeEventUtils();
-    public static final VoidWorldHandler VOID_WORLD_HANDLER = new VoidWorldHandler();
-    public static final GTNLWorldgenloader GTNL_WORLDGEN_LOADER = new GTNLWorldgenloader();
-    public static final VMTweakHelper VM_TWEAK_HELPER = new VMTweakHelper();
-    public static final WorldListener WORLD_LISTENER = new WorldListener();
-
-    // preInit "Run before anything else. Read your config, create blocks, items, etc., and register them with the
-    // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
-        MinecraftForge.EVENT_BUS.register(SUBSCRIBE_EVENT_UTILS);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(SUBSCRIBE_EVENT_UTILS);
-        MinecraftForge.EVENT_BUS.register(VOID_WORLD_HANDLER);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(VOID_WORLD_HANDLER);
-        MinecraftForge.TERRAIN_GEN_BUS.register(GTNL_WORLDGEN_LOADER);
-
-        NetWorkHandler.register();
+        ContentLoaders.preInit();
     }
 
-    // load "Do your mod setup. Build whatever data structures you care about. Register recipes." (Remove if not needed)
     public void init(FMLInitializationEvent event) {
-        MinecraftForge.EVENT_BUS.register(VM_TWEAK_HELPER);
-        FMLCommonHandler.instance()
-            .bus()
-            .register(VM_TWEAK_HELPER);
-
-        FMLCommonHandler.instance()
-            .bus()
-            .register(WORLD_LISTENER);
-        MinecraftForge.EVENT_BUS.register(WORLD_LISTENER);
-
-        CraftingUnitHandler.register();
+        ContentLoaders.init();
     }
 
-    // postInit "Handle interaction with other mods, complete your setup based on this." (Remove if not needed)
     public void postInit(FMLPostInitializationEvent event) {
-        var interfaceTerminal = AEApi.instance()
-            .registries()
-            .interfaceTerminal();
-        interfaceTerminal.register(SuperCraftingInputHatchME.class);
-        interfaceTerminal.register(AssemblerMatrix.class);
-        interfaceTerminal.register(PartSuperInterface.class);
-        interfaceTerminal.register(TileEntitySuperInterface.class);
-        interfaceTerminal.register(PartSuperDualInterface.class);
-        interfaceTerminal.register(TileEntitySuperDualInterface.class);
-
-        Upgrades.ADVANCED_BLOCKING.registerItem(GTNLItemList.PartSuperInterface.get(1), 1);
-        Upgrades.CRAFTING.registerItem(GTNLItemList.PartSuperInterface.get(1), 1);
-        Upgrades.FAKE_CRAFTING.registerItem(GTNLItemList.PartSuperInterface.get(1), 1);
-        Upgrades.FUZZY.registerItem(GTNLItemList.PartSuperInterface.get(1), 1);
-        Upgrades.LOCK_CRAFTING.registerItem(GTNLItemList.PartSuperInterface.get(1), 1);
-
-        Upgrades.ADVANCED_BLOCKING.registerItem(GTNLItemList.SuperInterface.get(1), 1);
-        Upgrades.CRAFTING.registerItem(GTNLItemList.SuperInterface.get(1), 1);
-        Upgrades.FAKE_CRAFTING.registerItem(GTNLItemList.SuperInterface.get(1), 1);
-        Upgrades.FUZZY.registerItem(GTNLItemList.SuperInterface.get(1), 1);
-        Upgrades.LOCK_CRAFTING.registerItem(GTNLItemList.SuperInterface.get(1), 1);
-
-        Upgrades.ADVANCED_BLOCKING.registerItem(GTNLItemList.PartSuperDualInterface.get(1), 1);
-        Upgrades.CRAFTING.registerItem(GTNLItemList.PartSuperDualInterface.get(1), 1);
-        Upgrades.FAKE_CRAFTING.registerItem(GTNLItemList.PartSuperDualInterface.get(1), 1);
-        Upgrades.FUZZY.registerItem(GTNLItemList.PartSuperDualInterface.get(1), 1);
-        Upgrades.LOCK_CRAFTING.registerItem(GTNLItemList.PartSuperDualInterface.get(1), 1);
-
-        Upgrades.ADVANCED_BLOCKING.registerItem(GTNLItemList.SuperDualInterface.get(1), 1);
-        Upgrades.CRAFTING.registerItem(GTNLItemList.SuperDualInterface.get(1), 1);
-        Upgrades.FAKE_CRAFTING.registerItem(GTNLItemList.SuperDualInterface.get(1), 1);
-        Upgrades.FUZZY.registerItem(GTNLItemList.SuperDualInterface.get(1), 1);
-        Upgrades.LOCK_CRAFTING.registerItem(GTNLItemList.SuperDualInterface.get(1), 1);
-
-        Upgrades.CAPACITY.registerItem(GTNLItemList.PartActiveFormationPlane.get(1), 5);
-        Upgrades.FUZZY.registerItem(GTNLItemList.PartActiveFormationPlane.get(1), 1);
-        Upgrades.INVERTER.registerItem(GTNLItemList.PartActiveFormationPlane.get(1), 1);
-
-        if (Mods.ThaumicEnergistics.isModLoaded()) {
-            registerEssentiaHatch();
-        }
-
-        if (Mods.MobsInfo.isModLoaded()) {
-            MinecraftForge.EVENT_BUS.register(new ExtremeExtremeEntityCrusherRecipes());
-        }
-
-        TCResearches.registerCategory();
-
-        MaterialLoader.loadPostInit();
+        ContentLoaders.postInit();
     }
 
     public void completeInit(FMLLoadCompleteEvent event) {
-        MaterialLoader.loadCompleteInit();
-        TCResearches.registerResearches();
-        VMTweakHelper.initializeDimensionMappings();
-    }
-
-    @Optional.Method(modid = "thaumicenergistics")
-    public static void registerEssentiaHatch() {
-        ThEApi api = ThEApi.instance();
-        if (api == null) return;
-
-        api.transportPermissions()
-            .addAspectContainerTileToInjectPermissions(
-                TileEntityEssentiaHatch.class,
-                TileEntityEssentiaHatch.MAX_STORED);
-        api.transportPermissions()
-            .addAspectContainerTileToInjectPermissions(
-                TileEntityMultiEssentiaJar.class,
-                TileEntityMultiEssentiaJar.MAX_CAPACITY);
-        api.transportPermissions()
-            .addAspectContainerTileToInjectPermissions(
-                TileEntityMultiEssentiaTube.class,
-                TileEntityMultiEssentiaTube.MAX_CAPACITY);
+        ContentLoaders.loadComplete();
     }
 
     @Override
     public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
-        ForgeDirection side = ForgeDirection.getOrientation(ID & 7);
-        int guiID = ID >> 3;
-        return switch (GuiType.getGuiType(guiID)) {
-            case DetravScannerGUI -> null;
-            case PortableBasicWorkBenchGUI -> new ContainerPortableBasicWorkbench(player, world, player.getHeldItem());
-            case PortableAdvancedWorkBenchGUI -> new ContainerPortableAdvancedWorkbench(
-                player.inventory,
-                player.worldObj,
-                player.getHeldItem());
-            case PortableFurnaceGUI -> new ContainerPortableFurnace(
-                player.inventory,
-                player.worldObj,
-                player.getHeldItem());
-            case PortableAnvilGUI -> new ContainerPortableAnvil(player.inventory, player);
-            case PortableEnderChestGUI -> new ContainerPortableEnderChest(
-                player.inventory,
-                player.getInventoryEnderChest());
-            case PortableEnchantingGUI -> new ContainerPortableEnchanting(player.inventory, world);
-            case PortableCompressedChestGUI -> new ContainerPortableCompressedChest(
-                player.getHeldItem(),
-                player.inventory);
-            case PortableInfinityChestGUI -> new ContainerPortableInfinityChest(player.getHeldItem(), player.inventory);
-            case PortableCopperChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.COPPER);
-            case PortableIronChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.IRON);
-            case PortableSilverChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.SILVER);
-            case PortableSteelChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.STEEL);
-            case PortableGoldenChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.GOLD);
-            case PortableDiamondChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.DIAMOND);
-            case PortableCrystalChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.CRYSTAL);
-            case PortableObsidianChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.OBSIDIAN);
-            case PortableNetheriteChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.NETHERITE);
-            case PortableDarkSteelChestGUI -> new ContainerPortableChest(
-                player.inventory,
-                player.getHeldItem(),
-                PortableChestType.DARKSTEEL);
-            case PortableCellWorkbenchGUI -> createPortableCellWorkbenchContainer(player, x);
-            case PortableCellWorkbenchOreFilterGUI -> createPortableCellWorkbenchOreFilter(player, x);
-            case PortableCellWorkbenchRestrictionGUI -> createPortableCellWorkbenchRestriction(player, x);
-            case DirePatternEncoderGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof TileEntityDirePatternEncoder d) {
-                    yield new ContainerDirePatternEncoder(player.inventory, d);
-                }
-                yield null;
-            }
-            case MEChiselGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof TileEntityMEChisel d) {
-                    yield new ContainerMEChisel(player.inventory, d);
-                }
-                yield null;
-            }
-            case SuperInterfaceGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof TileEntitySuperInterface si) {
-                    var container = new ContainerSuperInterface(player.inventory, si);
-                    ContainerOpenContext ctx = new ContainerOpenContext(si);
-                    ctx.setWorld(world);
-                    ctx.setX(x);
-                    ctx.setY(y);
-                    ctx.setZ(z);
-                    ctx.setSide(side);
-                    container.setOpenContext(ctx);
-                    yield container;
-
-                } else if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartSuperInterface si) {
-                        var container = new ContainerSuperInterface(player.inventory, si);
-                        ContainerOpenContext ctx = new ContainerOpenContext(si);
-                        ctx.setWorld(world);
-                        ctx.setX(x);
-                        ctx.setY(y);
-                        ctx.setZ(z);
-                        ctx.setSide(side);
-                        container.setOpenContext(ctx);
-                        yield container;
-                    }
-                }
-                yield null;
-            }
-            case SuperDualInterfaceGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof TileEntitySuperDualInterface si) {
-                    var container = new ContainerSuperInterface(player.inventory, si);
-                    ContainerOpenContext ctx = new ContainerOpenContext(si);
-                    ctx.setWorld(world);
-                    ctx.setX(x);
-                    ctx.setY(y);
-                    ctx.setZ(z);
-                    ctx.setSide(side);
-                    container.setOpenContext(ctx);
-                    yield container;
-
-                } else if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartSuperDualInterface si) {
-                        var container = new ContainerSuperInterface(player.inventory, si);
-                        ContainerOpenContext ctx = new ContainerOpenContext(si);
-                        ctx.setWorld(world);
-                        ctx.setX(x);
-                        ctx.setY(y);
-                        ctx.setZ(z);
-                        ctx.setSide(side);
-                        container.setOpenContext(ctx);
-                        yield container;
-                    }
-                }
-                yield null;
-            }
-            case SuperDualInterfaceFluidGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof TileEntitySuperDualInterface si) {
-                    var container = new ContainerSuperDualInterfaceFluid(player.inventory, si);
-                    ContainerOpenContext ctx = new ContainerOpenContext(si);
-                    ctx.setWorld(world);
-                    ctx.setX(x);
-                    ctx.setY(y);
-                    ctx.setZ(z);
-                    ctx.setSide(side);
-                    container.setOpenContext(ctx);
-                    yield container;
-                } else if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartSuperDualInterface si) {
-                        var container = new ContainerSuperDualInterfaceFluid(player.inventory, si);
-                        ContainerOpenContext ctx = new ContainerOpenContext(si);
-                        ctx.setWorld(world);
-                        ctx.setX(x);
-                        ctx.setY(y);
-                        ctx.setZ(z);
-                        ctx.setSide(side);
-                        container.setOpenContext(ctx);
-                        yield container;
-                    }
-                }
-                yield null;
-            }
-            case ActiveFormationPlaneGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartActiveFormationPlane si) {
-                        var container = new ContainerActiveFormationPlane(player.inventory, si);
-                        ContainerOpenContext ctx = new ContainerOpenContext(si);
-                        ctx.setWorld(world);
-                        ctx.setX(x);
-                        ctx.setY(y);
-                        ctx.setZ(z);
-                        ctx.setSide(side);
-                        container.setOpenContext(ctx);
-                        yield container;
-                    }
-                }
-                yield null;
-            }
-            case MECellDockGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartMECellDock dock) {
-                        var container = new ContainerMECellDock(player.inventory, dock);
-                        ContainerOpenContext ctx = new ContainerOpenContext(dock);
-                        ctx.setWorld(world);
-                        ctx.setX(x);
-                        ctx.setY(y);
-                        ctx.setZ(z);
-                        ctx.setSide(side);
-                        container.setOpenContext(ctx);
-                        yield container;
-                    }
-                }
-                yield null;
-            }
-            case CustomPriorityGUI -> {
-                var t = world.getTileEntity(x, y, z);
-                IPriorityHost priorityHost = null;
-                if (t instanceof TileEntitySuperInterface si) {
-                    priorityHost = si;
-                } else if (t instanceof TileEntitySuperDualInterface si) {
-                    priorityHost = si;
-                } else if (t instanceof IPartHost host) {
-                    IPart part = host.getPart(side);
-                    if (part instanceof PartSuperInterface si) {
-                        priorityHost = si;
-                    } else if (part instanceof PartSuperDualInterface si) {
-                        priorityHost = si;
-                    } else if (part instanceof PartActiveFormationPlane si) {
-                        priorityHost = si;
-                    } else if (part instanceof PartMECellDock dock) {
-                        priorityHost = dock;
-                    }
-                }
-                if (priorityHost != null) {
-                    var container = new ContainerCustomPriority(player.inventory, priorityHost);
-                    ContainerOpenContext ctx = new ContainerOpenContext(priorityHost);
-                    ctx.setWorld(world);
-                    ctx.setX(x);
-                    ctx.setY(y);
-                    ctx.setZ(z);
-                    ctx.setSide(side);
-                    container.setOpenContext(ctx);
-                    yield container;
-                }
-                yield null;
-            }
-        };
+        return GTNLGuiHandler.serverElement(ID, player, world, x, y, z);
     }
 
     @Override
     public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
         return null;
+    }
+
+    public void setTimeStopVisual(boolean stopped) {}
+
+    public boolean handleClientRocketPlacement(EntityPlayer player) {
+        return false;
+    }
+
+    public boolean isCurrentClientWorld(World world) {
+        return false;
     }
 
     public EntityPlayer getEntityPlayerFromContext(final MessageContext ctx) {
@@ -438,49 +59,5 @@ public class CommonProxy implements IGuiHandler {
     public EntityParticleBeam particleBeam(double x, double y, double z, double masterX, double masterY, double masterZ,
         double radius, EntityParticleBeam oldBeam, boolean render) {
         return null;
-    }
-
-    public static void openGui(EntityPlayer player, GuiType type, ForgeDirection side, TileEntity tile) {
-        if (tile == null) return;
-        openGui(player, type, side, tile.getWorldObj(), tile.xCoord, tile.yCoord, tile.zCoord);
-    }
-
-    public static void openGui(EntityPlayer player, GuiType type, ForgeDirection side, World world, int x, int y,
-        int z) {
-        if (player == null || world == null) return;
-        if (side == null) side = ForgeDirection.UNKNOWN;
-
-        int fullID = (type.getID() << 3) | (side.ordinal() & 7);
-
-        player.openGui(ScienceNotLeisure.instance, fullID, world, x, y, z);
-    }
-
-    private Object createPortableCellWorkbenchContainer(EntityPlayer player, int inventorySlot) {
-        if (!isPortableCellWorkbenchSlot(player, inventorySlot)) return null;
-        return new PortableCellWorkbenchContainer(
-            player.inventory,
-            new PortableCellWorkbenchHost(player.inventory, ItemLoader.portableCellWorkbenchItem, inventorySlot));
-    }
-
-    private Object createPortableCellWorkbenchOreFilter(EntityPlayer player, int inventorySlot) {
-        PortableCellWorkbenchHost host = createPortableCellWorkbenchHost(player, inventorySlot);
-        return host == null ? null : PortableCellWorkbenchGuiFactory.createOreFilter(player.inventory, host);
-    }
-
-    private Object createPortableCellWorkbenchRestriction(EntityPlayer player, int inventorySlot) {
-        PortableCellWorkbenchHost host = createPortableCellWorkbenchHost(player, inventorySlot);
-        return host == null ? null : PortableCellWorkbenchGuiFactory.createCellRestriction(player.inventory, host);
-    }
-
-    private PortableCellWorkbenchHost createPortableCellWorkbenchHost(EntityPlayer player, int inventorySlot) {
-        if (!isPortableCellWorkbenchSlot(player, inventorySlot)) return null;
-        return new PortableCellWorkbenchHost(player.inventory, ItemLoader.portableCellWorkbenchItem, inventorySlot);
-    }
-
-    private boolean isPortableCellWorkbenchSlot(EntityPlayer player, int inventorySlot) {
-        return inventorySlot >= 0 && inventorySlot < player.inventory.getSizeInventory()
-            && player.inventory.getStackInSlot(inventorySlot) != null
-            && player.inventory.getStackInSlot(inventorySlot)
-                .getItem() == ItemLoader.portableCellWorkbenchItem;
     }
 }

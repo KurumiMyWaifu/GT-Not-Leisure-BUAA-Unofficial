@@ -16,14 +16,12 @@ import static gregtech.api.enums.HatchElement.InputHatch;
 import static gregtech.api.enums.HatchElement.Maintenance;
 import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.enums.HatchElement.OutputHatch;
-import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
 import static gregtech.api.util.GTStructureUtility.ofFrame;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -50,23 +48,12 @@ import com.gtnewhorizon.structurelib.structure.IStructureDefinition;
 import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
-import com.gtnewhorizons.modularui.api.drawable.IDrawable;
-import com.gtnewhorizons.modularui.api.drawable.Text;
-import com.gtnewhorizons.modularui.api.drawable.UITexture;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.widget.ButtonWidget;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.DynamicPositionedColumn;
-import com.gtnewhorizons.modularui.common.widget.FakeSyncWidget;
-import com.gtnewhorizons.modularui.common.widget.SlotWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
+import com.gtnllib.utils.MathUtils;
 import com.science.gtnl.api.casing.GTNLCasings;
-import com.science.gtnl.common.gui.modularui.SuperSpaceElevatorGui;
+import com.science.gtnl.common.gui.modularui.multiblock.SuperSpaceElevatorGui;
 import com.science.gtnl.common.machine.hatch.ParallelControllerHatch;
+import com.science.gtnl.common.machine.multiMachineBase.TTMultiMachineBase;
 import com.science.gtnl.utils.StructureUtils;
-import com.science.gtnl.utils.Utils;
-import com.science.gtnl.utils.item.ItemUtils;
 import com.science.gtnl.utils.world.teams.TeamNetworkManager;
 
 import gregtech.api.GregTechAPI;
@@ -86,15 +73,14 @@ import gregtech.api.recipe.check.CheckRecipeResultRegistry;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.HatchElementBuilder;
 import gregtech.api.util.IGTHatchAdder;
-import gregtech.api.util.MultiblockTooltipBuilder;
 import gregtech.common.gui.modularui.multiblock.base.MTEMultiBlockBaseGui;
 import gregtech.common.misc.GTStructureChannels;
 import gtnhintergalactic.config.IGConfig;
-import gtnhintergalactic.gui.IG_UITextures;
 import gtnhintergalactic.tile.TileEntitySpaceElevatorCable;
 import gtnhintergalactic.tile.multi.elevator.ElevatorUtil;
 import gtnhintergalactic.tile.multi.elevator.TileEntitySpaceElevator;
 import gtnhintergalactic.tile.multi.elevatormodules.TileEntityModuleBase;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import kubatech.loaders.BlockLoader;
 import lombok.Getter;
 import lombok.Setter;
@@ -102,14 +88,12 @@ import mcp.mobius.waila.api.IWailaConfigHandler;
 import mcp.mobius.waila.api.IWailaDataAccessor;
 import micdoodle8.mods.galacticraft.core.client.gui.screen.GuiCelestialSelection;
 import micdoodle8.mods.galacticraft.core.entities.player.GCPlayerStats;
-import micdoodle8.mods.galacticraft.core.util.GCCoreUtil;
 import micdoodle8.mods.galacticraft.core.util.WorldUtil;
-import tectech.thing.gui.TecTechUITextures;
 import tectech.thing.metaTileEntity.multi.base.TTMultiblockBase;
 import tectech.thing.metaTileEntity.multi.base.render.TTRenderedExtendedFacingTexture;
 
 @IMetaTileEntity.SkipGenerateDescription
-public class SuperSpaceElevator extends TTMultiblockBase
+public class SuperSpaceElevator extends TTMultiMachineBase
     implements IConstructable, ISecondaryDescribable, ISurvivalConstructable {
 
     private static final int MODULE_CHARGE_INTERVAL = 20;
@@ -136,12 +120,12 @@ public class SuperSpaceElevator extends TTMultiblockBase
     public int mCountCasing = 0;
     public boolean wirelessMode = false;
     public UUID ownerUUID;
-    public String costingEUText = Utils.ZERO_STRING;
-    public ArrayList<TileEntityModuleBase> mProjectModuleHatches = new ArrayList<>();
+    public String costingEUText = MathUtils.ZERO_STRING;
+    public ObjectArrayList<TileEntityModuleBase> mProjectModuleHatches = new ObjectArrayList<>();
     public TileEntitySpaceElevatorCable elevatorCable;
     public boolean isLoadedChunk;
 
-    public ArrayList<ParallelControllerHatch> mParallelControllerHatches = new ArrayList<>();
+    public ObjectArrayList<ParallelControllerHatch> mParallelControllerHatches = new ObjectArrayList<>();
 
     public SuperSpaceElevator(int aID, String aName, String aNameRegional) {
         super(aID, aName, aNameRegional);
@@ -204,7 +188,7 @@ public class SuperSpaceElevator extends TTMultiblockBase
 
     @Override
     public String[] getInfoData() {
-        List<String> ret = new ArrayList<>(Arrays.asList(super.getInfoData()));
+        List<String> ret = new ObjectArrayList<>(Arrays.asList(super.getInfoData()));
         if (wirelessMode) {
             ret.add(
                 IGregTechDeviceInformation.encode("gtnl.waila.wireless.mode.format", EnumChatFormatting.LIGHT_PURPLE));
@@ -221,34 +205,17 @@ public class SuperSpaceElevator extends TTMultiblockBase
     }
 
     @Override
-    public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.recipe_type"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.3"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.4"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.5"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.6"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.super_space_elevator.tooltip.7"))
-            .addSupportAny()
-            .beginStructureBlock(65, 53, 65, true)
-            .addEnergyHatch("0+", StatCollector.translateToLocal("gtnl.machine.super_space_elevator.casing"))
-            .addDynamoHatch("0+", StatCollector.translateToLocal("gtnl.machine.super_space_elevator.casing"))
-            .addSubChannelUsage(GTStructureChannels.TIER_MACHINE_CASING)
-            .addSubChannelUsage(GTStructureChannels.STRUCTURE_HEIGHT)
-            .toolTipFinisher();
-        return tt;
-    }
-
-    @Override
     public long maxEUStore() {
         return INTERNAL_BUFFER_MULTIPLIER * super.maxEUStore();
     }
 
     public int getNumberOfModules() {
         return mProjectModuleHatches != null ? mProjectModuleHatches.size() : 0;
+    }
+
+    @Override
+    protected boolean useMui2() {
+        return true;
     }
 
     @Override
@@ -610,84 +577,8 @@ public class SuperSpaceElevator extends TTMultiblockBase
     }
 
     @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after the Super Space Elevator GUI no longer supports mui1 startup paths.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(150, 154));
-    }
-
-    @Override
-    @Deprecated
-    public void drawTexts(DynamicPositionedColumn screenElements, SlotWidget inventorySlot) {
-        // TODO: Remove this mui1 fallback after the Super Space Elevator GUI no longer supports mui1 startup paths.
-        screenElements.setSynced(false)
-            .setSpace(0);
-        screenElements
-            .widget(
-                new TextWidget(StatCollector.translateToLocal("gt.interact.desc.mb.incomplete"))
-                    .setDefaultColor(COLOR_TEXT_WHITE.get())
-                    .setEnabled(widget -> !mMachine))
-            .widget(new FakeSyncWidget.BooleanSyncer(() -> mMachine, val -> mMachine = val));
-        screenElements.widget(
-            new TextWidget(StatCollector.translateToLocal("gt.blockmachines.multimachine.ig.elevator.gui.ready"))
-                .setDefaultColor(COLOR_TEXT_WHITE.get())
-                .setEnabled(widget -> mMachine));
-        screenElements.widget(
-            TextWidget
-                .dynamicText(
-                    () -> new Text(
-                        StatCollector.translateToLocal("gt.blockmachines.multimachine.ig.elevator.gui.numOfModules")
-                            + ": "
-                            + getNumberOfModules()))
-                .setDefaultColor(COLOR_TEXT_WHITE.get())
-                .setEnabled(widget -> getBaseMetaTileEntity().isAllowedToWork()));
-        screenElements.widget(
-            TextWidget
-                .dynamicText(
-                    () -> new Text(
-                        StatCollector.translateToLocal("gtnl.machine.super_space_elevator.structure_levels") + mTier))
-                .setDefaultColor(COLOR_TEXT_WHITE.get())
-                .setEnabled(widget -> getBaseMetaTileEntity().isAllowedToWork()));
-    }
-
-    @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after the Super Space Elevator GUI no longer supports mui1 startup paths.
-        super.addUIWidgets(builder, buildContext);
-
-        builder.widget(new ButtonWidget().setOnClick((clickData, widget) -> {
-            if (!widget.getContext()
-                .isClient()) {
-                openCelestialSelection(
-                    widget.getContext()
-                        .getPlayer());
-            }
-        })
-            .setPlayClickSound(false)
-            .setBackground(() -> {
-                List<UITexture> ret = new ArrayList<>();
-                ret.add(TecTechUITextures.BUTTON_STANDARD_16x16);
-                ret.add(IG_UITextures.OVERLAY_BUTTON_PLANET_TELEPORT);
-                return ret.toArray(new IDrawable[0]);
-            })
-            .setPos(174, 156)
-            .setSize(16, 16)
-            .addTooltip(GCCoreUtil.translate("ig.button.travel"))
-            .setTooltipShowUpDelay(TOOLTIP_DELAY));
-    }
-
-    @Override
     public boolean willExplodeInRain() {
         return false;
-    }
-
-    @Override
-    public ButtonWidget createSafeVoidButton() {
-        return null;
     }
 
     @Override
@@ -754,7 +645,8 @@ public class SuperSpaceElevator extends TTMultiblockBase
 
     public enum ProjectModuleElement implements IHatchElement<SuperSpaceElevator> {
 
-        ParallelCon(SuperSpaceElevator::addParallelControllerToMachineList, ParallelControllerHatch.class) {
+        ParallelCon("gtnl.structure.hatch.parallel_controller", SuperSpaceElevator::addParallelControllerToMachineList,
+            ParallelControllerHatch.class) {
 
             @Override
             public long count(SuperSpaceElevator tileEntity) {
@@ -762,7 +654,8 @@ public class SuperSpaceElevator extends TTMultiblockBase
             }
         },
 
-        ProjectModule(SuperSpaceElevator::addProjectModuleToMachineList, TileEntityModuleBase.class) {
+        ProjectModule("gt.blockmachines.module.name", SuperSpaceElevator::addProjectModuleToMachineList,
+            TileEntityModuleBase.class) {
 
             @Override
             public long count(SuperSpaceElevator tileEntity) {
@@ -772,11 +665,24 @@ public class SuperSpaceElevator extends TTMultiblockBase
 
         private final List<Class<? extends IMetaTileEntity>> mteClasses;
         private final IGTHatchAdder<SuperSpaceElevator> adder;
+        private final String nameKey;
 
         @SafeVarargs
-        ProjectModuleElement(IGTHatchAdder<SuperSpaceElevator> adder, Class<? extends IMetaTileEntity>... mteClasses) {
+        ProjectModuleElement(String nameKey, IGTHatchAdder<SuperSpaceElevator> adder,
+            Class<? extends IMetaTileEntity>... mteClasses) {
+            this.nameKey = nameKey;
             this.mteClasses = Collections.unmodifiableList(Arrays.asList(mteClasses));
             this.adder = adder;
+        }
+
+        @Override
+        public String getDescriptionLangKey() {
+            return nameKey;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return StatCollector.translateToLocal(nameKey);
         }
 
         @Override

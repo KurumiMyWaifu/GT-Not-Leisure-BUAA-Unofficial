@@ -20,6 +20,7 @@ import com.gtnewhorizon.structurelib.structure.ISurvivalBuildEnvironment;
 import com.gtnewhorizon.structurelib.structure.StructureDefinition;
 import com.gtnewhorizon.structurelib.structure.StructureUtility;
 import com.science.gtnl.common.machine.multiMachineBase.SteamMultiMachineBase;
+import com.science.gtnl.common.machine.tooltip.GTNLMultiblockTooltipBuilder;
 import com.science.gtnl.utils.StructureUtils;
 import com.science.gtnl.utils.enums.BlockIcons;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
@@ -42,7 +43,6 @@ import gregtech.api.util.GTRecipe;
 import gregtech.api.util.GTStructureUtility;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.MultiblockTooltipBuilder;
-import gregtech.common.misc.GTStructureChannels;
 import gregtech.common.tileentities.render.RenderingTileEntityBlackhole;
 
 @IMetaTileEntity.SkipGenerateDescription
@@ -177,11 +177,6 @@ public class MegaSteamCompressor extends SteamMultiMachineBase<MegaSteamCompress
     }
 
     @Override
-    public double getDurationModifier() {
-        return 1.0 / (1 << Math.min(4, recipeOcCount));
-    }
-
-    @Override
     public int getMaxParallelRecipes() {
         return 256;
     }
@@ -249,14 +244,8 @@ public class MegaSteamCompressor extends SteamMultiMachineBase<MegaSteamCompress
 
     @Override
     public MultiblockTooltipBuilder createTooltip() {
-        MultiblockTooltipBuilder tt = new MultiblockTooltipBuilder();
-        tt.addMachineType(getMachineType())
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_steam_compressor.tooltip.0"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_steam_compressor.tooltip.1"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_steam_compressor.tooltip.2"))
-            .addInfo(StatCollector.translateToLocal("gtnl.machine.mega_steam_compressor.tooltip.3"))
-            .beginStructureBlock(35, 33, 35, true)
-            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
+        GTNLMultiblockTooltipBuilder tt = new GTNLMultiblockTooltipBuilder();
+        tt.addAutoTooltip(this)
             .toolTipFinisher();
         return tt;
     }

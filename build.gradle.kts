@@ -10,6 +10,10 @@ tasks.withType<JavaCompile>().configureEach {
     options.annotationProcessorPath = configurations.annotationProcessor.get()
 }
 
+sourceSets.test {
+    compileClasspath += sourceSets.main.get().compileClasspath
+}
+
 val runConfigs = listOf(
     "runClient" to "run/client",
     "runClient17" to "run/client_new",

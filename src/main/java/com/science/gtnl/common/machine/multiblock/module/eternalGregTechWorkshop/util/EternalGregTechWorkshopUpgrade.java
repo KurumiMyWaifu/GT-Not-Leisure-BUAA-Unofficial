@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.multiblock.module.eternalGregTechWorkshop.util;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
@@ -12,9 +11,6 @@ import net.minecraft.util.StatCollector;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.modularui.api.drawable.UITexture;
-import com.gtnewhorizons.modularui.api.math.Pos2d;
-import com.gtnewhorizons.modularui.api.math.Size;
 
 import gregtech.api.modularui2.GTGuiTextures;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -59,7 +55,7 @@ public enum EternalGregTechWorkshopUpgrade {
 
     public static final EternalGregTechWorkshopUpgrade[] VALUES = values();
 
-    static final Set<EternalGregTechWorkshopUpgrade> SPLIT_UPGRADES;
+    public static final Set<EternalGregTechWorkshopUpgrade> SPLIT_UPGRADES;
 
     static {
         // Build upgrade data. Done here due to potential forward references
@@ -264,7 +260,7 @@ public enum EternalGregTechWorkshopUpgrade {
             EternalGregTechWorkshopUpgrade.class);
         for (EternalGregTechWorkshopUpgrade upgrade : VALUES) {
             for (EternalGregTechWorkshopUpgrade prerequisite : upgrade.prerequisites) {
-                dependencies.computeIfAbsent(prerequisite, $ -> new ArrayList<>())
+                dependencies.computeIfAbsent(prerequisite, $ -> new ObjectArrayList<>())
                     .add(upgrade);
             }
         }
@@ -285,7 +281,7 @@ public enum EternalGregTechWorkshopUpgrade {
     // Cost
     @Getter
     private int shardCost;
-    private final List<ItemStack> extraCost = new ArrayList<>();
+    private final List<ItemStack> extraCost = new ObjectArrayList<>();
 
     // UI
     private UpgradeColor color;
@@ -342,18 +338,6 @@ public enum EternalGregTechWorkshopUpgrade {
         return extraCost.toArray(new ItemStack[0]);
     }
 
-    @Deprecated
-    public UITexture getBackground() {
-        // TODO: Remove this MUI1 texture getter after Eternal GregTech Workshop fallback windows are removed.
-        return color.getBackground();
-    }
-
-    @Deprecated
-    public UITexture getOverlay() {
-        // TODO: Remove this MUI1 texture getter after Eternal GregTech Workshop fallback windows are removed.
-        return color.getOverlay();
-    }
-
     public IDrawable getMui2Background() {
         return color.getMui2Background();
     }
@@ -382,18 +366,6 @@ public enum EternalGregTechWorkshopUpgrade {
         return treeY;
     }
 
-    @Deprecated
-    public Pos2d getTreePos() {
-        // TODO: Remove this MUI1 position getter after Eternal GregTech Workshop fallback windows are removed.
-        return new Pos2d(treeX, treeY);
-    }
-
-    @Deprecated
-    public UITexture getSymbol() {
-        // TODO: Remove this MUI1 texture getter after Eternal GregTech Workshop fallback windows are removed.
-        return icon.getSymbol();
-    }
-
     public IDrawable getMui2Symbol() {
         return switch (icon) {
             case CHARGE -> GTGuiTextures.PICTURE_GODFORGE_MILESTONE_CHARGE;
@@ -405,12 +377,6 @@ public enum EternalGregTechWorkshopUpgrade {
 
     public float getSymbolWidthRatio() {
         return icon.getWidthRatio();
-    }
-
-    @Deprecated
-    public Size getWindowSize() {
-        // TODO: Remove this MUI1 size getter after Eternal GregTech Workshop fallback windows are removed.
-        return windowSize.getWindowSize();
     }
 
     public int getWindowWidthForGui() {
@@ -456,8 +422,6 @@ public enum EternalGregTechWorkshopUpgrade {
         private BGWindowSize windowSize = BGWindowSize.STANDARD;
         private int treeX;
         private int treeY;
-
-        private Builder() {}
 
         public Builder prereqs(EternalGregTechWorkshopUpgrade... prereqs) {
             if (this.prerequisites != null) {
@@ -514,12 +478,6 @@ public enum EternalGregTechWorkshopUpgrade {
             this.width = width;
             this.height = height;
             this.loreY = loreY;
-        }
-
-        @Deprecated
-        public Size getWindowSize() {
-            // TODO: Remove this MUI1 size getter after Eternal GregTech Workshop fallback windows are removed.
-            return new Size(width, height);
         }
 
     }

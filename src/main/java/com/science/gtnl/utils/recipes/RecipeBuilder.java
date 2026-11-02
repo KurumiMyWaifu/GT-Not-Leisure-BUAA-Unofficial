@@ -2,8 +2,9 @@ package com.science.gtnl.utils.recipes;
 
 import static gregtech.api.util.GTRecipeMapUtil.SPECIAL_VALUE_ALIASES;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import com.science.gtnl.ScienceNotLeisure;
+import com.science.gtnl.compat.variablehorizons.VariableHorizonsCompat;
 import com.science.gtnl.mixins.early.gregtech.AccessorGTRecipe;
 import com.science.gtnl.mixins.early.gregtech.AccessorGTRecipeBuilder;
 import com.science.gtnl.mixins.early.gregtech.AccessorGTRecipeWithAlt;
@@ -37,6 +39,7 @@ import gregtech.api.util.GTRecipeBuilder;
 import gregtech.api.util.GTRecipeConstants;
 import gregtech.api.util.GTUtility;
 import gregtech.api.util.extensions.ArrayExt;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class RecipeBuilder {
 
@@ -55,6 +58,21 @@ public class RecipeBuilder {
 
     // This should only be enabled in non stable instances only with -Dgt.recipebuilder.recipe_collision_check=true
     public static final boolean ENABLE_COLLISION_CHECK;
+
+    public static final int WILDCARD = 32767;
+
+    public static final int HOURS = 20 * 60 * 60;
+    public static final int MINUTES = 20 * 60;
+    public static final int SECONDS = 20;
+    public static final int TICKS = 1;
+
+    public static final int INGOTS = 144;
+    public static final int HALF_INGOTS = INGOTS / 2;
+    public static final int QUARTER_INGOTS = INGOTS / 4;
+    public static final int EIGHTH_INGOTS = INGOTS / 8;
+    public static final int NUGGETS = INGOTS / 9;
+    public static final int STACKS = 64 * INGOTS;
+    public static final int BUCKETS = 1_000;
 
     static {
         boolean debugAll;
@@ -81,15 +99,20 @@ public class RecipeBuilder {
         return new RecipeBuilder();
     }
 
-    public ItemStack[] inputItems = GTValues.emptyItemStackArray;
+    public static RecipeBuilder empty() {
+        return builder().duration(0)
+            .eut(0);
+    }
+
+    public ItemStack[] inputsBasic = GTValues.emptyItemStackArray;
     public Object[] inputsOreDict;
-    public ItemStack[] outputItems = GTValues.emptyItemStackArray;
+    public ItemStack[] outputs = GTValues.emptyItemStackArray;
     public ItemStack[][] alts;
     public int[] altOreIds;
-    public FluidStack[] inputFluids = GTValues.emptyFluidStackArray;
+    public FluidStack[] fluidInputs = GTValues.emptyFluidStackArray;
     public FluidStack[][] altFluidInputs;
-    public FluidStack[] outputFluids = GTValues.emptyFluidStackArray;
-    public int[] inputChance, inputFluidChance, outputChance, outputFluidChance;
+    public FluidStack[] fluidOutputs = GTValues.emptyFluidStackArray;
+    public int[] inputChances, fluidInputChances, outputChances, fluidOutputChances;
     public Object special;
     public int duration = -1;
     public int eut = -1;
@@ -105,6 +128,8 @@ public class RecipeBuilder {
     @Nullable
     public IRecipeMetadataStorage metadataStorage;
     public boolean checkForCollision = true;
+    @Nullable
+    public ItemStack pendingIntegratedCircuit;
     /**
      * If recipe addition should be skipped.
      */
@@ -118,16 +143,75 @@ public class RecipeBuilder {
 
     public RecipeBuilder() {}
 
+    /**
+     * circuit method helper. Adds appropriate integrated circuit into item inputs.
+     */
+    private ItemStack[] applyPendingCircuit(ItemStack[] baseInputs) {
+        if (pendingIntegratedCircuit == null) {
+            return baseInputs;
+        }
+        // Append pending circuit & clear it
+        ItemStack[] newInputs = new ItemStack[baseInputs.length + 1];
+        System.arraycopy(baseInputs, 0, newInputs, 0, baseInputs.length);
+        newInputs[baseInputs.length] = pendingIntegratedCircuit;
+        pendingIntegratedCircuit = null;
+        return newInputs;
+    }
+
+    /**
+     * Specialized item input method for adding integrated circuits into a recipe.
+     */
+    public RecipeBuilder circuit(int integratedCircuitNumber) {
+        ItemStack circuit = GTUtility.getIntegratedCircuit(integratedCircuitNumber);
+
+        if (inputsOreDict != null) {
+            Object[] newInputs = Arrays.copyOf(inputsOreDict, inputsOreDict.length + 1);
+            newInputs[inputsOreDict.length] = circuit;
+            inputsOreDict = newInputs;
+
+            ItemStack[][] newAlternatives = alts == null ? new ItemStack[1][] : Arrays.copyOf(alts, alts.length + 1);
+            newAlternatives[newAlternatives.length - 1] = new ItemStack[] { circuit };
+            alts = newAlternatives;
+
+            int[] newOreIds = altOreIds == null ? new int[1] : Arrays.copyOf(altOreIds, altOreIds.length + 1);
+            newOreIds[newOreIds.length - 1] = -1;
+            altOreIds = newOreIds;
+        }
+
+        if (inputsOreDict != null && (inputsBasic == null || inputsBasic.length == 0)) {
+            inputsBasic = new ItemStack[] { circuit };
+            pendingIntegratedCircuit = null;
+        } else if (inputsBasic != null && inputsBasic.length > 0) {
+            // Input condition
+            pendingIntegratedCircuit = circuit;
+            inputsBasic = applyPendingCircuit(inputsBasic);
+        } else {
+            // No inputs condition
+            inputsBasic = new ItemStack[] { circuit };
+            pendingIntegratedCircuit = circuit;
+        }
+
+        inputItemCount = countValidItemStacks(inputsBasic);
+
+        return this;
+    }
+
     public RecipeBuilder itemInputsUnified(ItemStack... inputs) {
         if (skip) return this;
         if (debugNull() && containsNull(inputs)) handleNullRecipeComponents("itemInputUnified");
-        inputItems = ArrayExt.removeTrailingNulls(inputs);
+        inputsBasic = applyPendingCircuit(ArrayExt.removeTrailingNulls(inputs));
         preserveNullItemInputs = false;
-        inputItemCount = countValidItemStacks(inputItems);
+        inputItemCount = countValidItemStacks(inputsBasic);
         inputsOreDict = null;
         alts = null;
         altOreIds = null;
         return this;
+    }
+
+    public RecipeBuilder itemInputsUnified(ItemStack[] inputs, int[] chances) {
+        if (skip) return this;
+        this.inputChances = chances;
+        return itemInputsUnified(inputs);
     }
 
     public RecipeBuilder itemInputs(List<ItemStack> inputItems) {
@@ -135,11 +219,12 @@ public class RecipeBuilder {
     }
 
     public RecipeBuilder itemInputs(ItemStack... inputItems) {
+        if (skip) return this;
         if (inputItems != null && inputItems.length > 0) {
-            this.inputItems = inputItems;
-            inputItemCount = countValidItemStacks(this.inputItems);
+            this.inputsBasic = applyPendingCircuit(inputItems);
+            inputItemCount = countValidItemStacks(this.inputsBasic);
         } else {
-            this.inputItems = GTValues.emptyItemStackArray;
+            this.inputsBasic = GTValues.emptyItemStackArray;
             inputItemCount = 0;
         }
         preserveNullItemInputs = false;
@@ -147,6 +232,30 @@ public class RecipeBuilder {
         alts = null;
         altOreIds = null;
         return this;
+    }
+
+    public RecipeBuilder itemInputs(ItemStack[] inputs, int[] chances) {
+        if (skip) return this;
+        this.inputChances = chances;
+        return itemInputs(inputs);
+    }
+
+    public RecipeBuilder itemInputsUnsafe(ItemStack... inputItems) {
+        if (skip) return this;
+        if (debugNull() && containsNull(inputItems)) handleNullRecipeComponents("itemInputsUnsafe");
+        this.inputsBasic = applyPendingCircuit(fix(inputItems, true));
+        this.inputItemCount = countValidItemStacks(this.inputsBasic);
+        this.preserveNullItemInputs = false;
+        this.inputsOreDict = null;
+        this.alts = null;
+        this.altOreIds = null;
+        return this;
+    }
+
+    public RecipeBuilder itemInputsUnsafe(ItemStack[] inputs, int[] chances) {
+        if (skip) return this;
+        this.inputChances = chances;
+        return itemInputsUnsafe(inputs);
     }
 
     public RecipeBuilder itemInputs(Object... inputs) {
@@ -170,14 +279,14 @@ public class RecipeBuilder {
 
             } else if (in instanceof OreDictItemStack oreDictItemStack) {
                 altOreIds[i] = OreDictionary.getOreID(oreDictItemStack.mOreName);
-                ArrayList<ItemStack> ores = GTOreDictUnificator.getOres(oreDictItemStack.mOreName);
+                List<ItemStack> ores = GTOreDictUnificator.getOres(oreDictItemStack.mOreName);
                 if (ores.isEmpty()) {
                     GTLoggers.GT_FML_LOGGER.error(
                         "Warning: OreDict entry \"" + oreDictItemStack.mOreName
                             + "\" is empty; recipe will be skipped.");
                     result = GTValues.emptyItemStackArray;
                 } else {
-                    ArrayList<ItemStack> list = new ArrayList<>(ores.size());
+                    ObjectArrayList<ItemStack> list = new ObjectArrayList<>(ores.size());
                     for (ItemStack ore : ores) {
                         ItemStack copy = GTUtility.copyAmount(oreDictItemStack.mAmount, ore);
                         if (GTUtility.isStackValid(copy)) {
@@ -189,14 +298,14 @@ public class RecipeBuilder {
 
             } else if (in instanceof Object[]arr && arr.length == 2) {
                 altOreIds[i] = OreDictionary.getOreID(arr[0].toString());
-                ArrayList<ItemStack> ores = GTOreDictUnificator.getOres(arr[0]);
+                List<ItemStack> ores = GTOreDictUnificator.getOres(arr[0]);
                 if (ores.isEmpty()) {
                     GTLoggers.GT_FML_LOGGER
                         .error("Warning: OreDict entry \"{}\" is empty; recipe will be skipped.", arr[0]);
                     result = GTValues.emptyItemStackArray;
                 } else {
                     int size = ((Number) arr[1]).intValue();
-                    ArrayList<ItemStack> list = new ArrayList<>(ores.size());
+                    ObjectArrayList<ItemStack> list = new ObjectArrayList<>(ores.size());
                     for (ItemStack ore : ores) {
                         ItemStack copy = GTUtility.copyAmount(size, ore);
                         if (GTUtility.isStackValid(copy)) list.add(copy);
@@ -216,23 +325,30 @@ public class RecipeBuilder {
         }
 
         int l = alts.length;
-        ArrayList<ItemStack> basics = new ArrayList<>(l);
+        ObjectArrayList<ItemStack> basics = new ObjectArrayList<>(l);
         for (ItemStack[] s : alts) {
             basics.add(s.length > 0 ? s[0] : null);
         }
 
-        this.inputItems = basics.isEmpty() ? GTValues.emptyItemStackArray : basics.toArray(new ItemStack[0]);
+        this.inputsBasic = applyPendingCircuit(
+            basics.isEmpty() ? GTValues.emptyItemStackArray : basics.toArray(new ItemStack[0]));
         preserveNullItemInputs = false;
-        inputItemCount = countValidItemStacks(this.inputItems);
+        inputItemCount = countValidItemStacks(this.inputsBasic);
 
         return this;
     }
 
+    public RecipeBuilder itemInputs(Object[] inputs, int[] chances) {
+        if (skip) return this;
+        this.inputChances = chances;
+        return itemInputs(inputs);
+    }
+
     public RecipeBuilder itemInputsAllowNulls(ItemStack... inputs) {
         if (skip) return this;
-        inputItems = fix(inputs, false);
+        inputsBasic = fix(inputs, false);
         preserveNullItemInputs = true;
-        inputItemCount = countValidItemStacks(inputItems);
+        inputItemCount = countValidItemStacks(inputsBasic);
         inputsOreDict = null;
         alts = null;
         altOreIds = null;
@@ -240,16 +356,23 @@ public class RecipeBuilder {
     }
 
     public RecipeBuilder itemOutputs(ItemStack... outputItems) {
-        this.outputItems = filterValidItemStacks(outputItems);
-        outputItemCount = this.outputItems.length;
+        if (skip) return this;
+        this.outputs = filterValidItemStacks(outputItems);
+        outputItemCount = this.outputs.length;
         return this;
+    }
+
+    public RecipeBuilder itemOutputs(ItemStack[] outputs, int[] chances) {
+        if (skip) return this;
+        this.outputChances = chances;
+        return itemOutputs(outputs);
     }
 
     public RecipeBuilder fluidInputs(FluidStack... inputFluids) {
         if (skip) return this;
         if (debugNull() && containsNull(inputFluids)) handleNullRecipeComponents("fluidInputs");
-        this.inputFluids = inputFluids == null ? GTValues.emptyFluidStackArray : ArrayExt.removeNullFluids(inputFluids);
-        inputFluidCount = this.inputFluids.length;
+        this.fluidInputs = inputFluids == null ? GTValues.emptyFluidStackArray : ArrayExt.removeNullFluids(inputFluids);
+        inputFluidCount = this.fluidInputs.length;
         this.altFluidInputs = null;
         return this;
     }
@@ -257,14 +380,15 @@ public class RecipeBuilder {
     public RecipeBuilder fluidInputs(Object... fluids) {
         if (skip) return this;
         if (containsNull(fluids) || fluids.length == 0) {
-            this.inputFluids = GTValues.emptyFluidStackArray;
+            this.fluidInputs = GTValues.emptyFluidStackArray;
             this.altFluidInputs = null;
+            this.inputFluidCount = 0;
             if (debugNull()) handleNullRecipeComponents("SubstituteFluidStack");
             return this;
         }
 
-        List<FluidStack> mainFluidList = new ArrayList<>(fluids.length);
-        List<FluidStack[]> altFluidList = new ArrayList<>(fluids.length);
+        List<FluidStack> mainFluidList = new ObjectArrayList<>(fluids.length);
+        List<FluidStack[]> altFluidList = new ObjectArrayList<>(fluids.length);
         for (Object fluid : fluids) {
             if (fluid instanceof SubstituteFluidStack substituteFluidStack) {
                 FluidStack[] alternatives = substituteFluidStack.fluidStacks.toArray(new FluidStack[0]);
@@ -277,36 +401,49 @@ public class RecipeBuilder {
                 throw new IllegalArgumentException("Unexpected type: " + fluid.getClass());
             }
         }
-        this.inputFluids = mainFluidList.toArray(new FluidStack[0]);
+        this.fluidInputs = mainFluidList.toArray(new FluidStack[0]);
         this.altFluidInputs = altFluidList.toArray(new FluidStack[0][]);
-        inputFluidCount = this.inputFluids.length;
+        inputFluidCount = this.fluidInputs.length;
         return this;
+    }
+
+    public RecipeBuilder fluidInputs(FluidStack[] inputs, int[] chances) {
+        if (skip) return this;
+        this.fluidInputChances = chances;
+        return fluidInputs(inputs);
     }
 
     public RecipeBuilder fluidOutputs(FluidStack... outputFluids) {
-        this.outputFluids = outputFluids == null ? GTValues.emptyFluidStackArray
+        if (skip) return this;
+        this.fluidOutputs = outputFluids == null ? GTValues.emptyFluidStackArray
             : ArrayExt.removeNullFluids(outputFluids);
-        outputFluidCount = this.outputFluids.length;
+        outputFluidCount = this.fluidOutputs.length;
         return this;
     }
 
+    public RecipeBuilder fluidOutputs(FluidStack[] outputs, int[] chances) {
+        if (skip) return this;
+        this.fluidOutputChances = chances;
+        return fluidOutputs(outputs);
+    }
+
     public RecipeBuilder inputChances(int... outputChance) {
-        this.inputChance = outputChance;
+        this.inputChances = outputChance;
         return this;
     }
 
     public RecipeBuilder inputFluidChances(int... outputChance) {
-        this.inputFluidChance = outputChance;
+        this.fluidInputChances = outputChance;
         return this;
     }
 
     public RecipeBuilder outputChances(int... outputChance) {
-        this.outputChance = outputChance;
+        this.outputChances = outputChance;
         return this;
     }
 
     public RecipeBuilder outputFluidChances(int... outputChance) {
-        this.outputFluidChance = outputChance;
+        this.fluidOutputChances = outputChance;
         return this;
     }
 
@@ -337,6 +474,11 @@ public class RecipeBuilder {
 
     public RecipeBuilder specialValue(int specialValue) {
         this.specialValue = specialValue;
+        return this;
+    }
+
+    public RecipeBuilder disabled() {
+        this.enabled = false;
         return this;
     }
 
@@ -418,6 +560,211 @@ public class RecipeBuilder {
         return this;
     }
 
+    public <T> T getMetadata(RecipeMetadataKey<T> key) {
+        return metadataStorage == null ? null : metadataStorage.getMetadata(key);
+    }
+
+    public RecipeBuilder modifiedByVariant(String... variantNames) {
+        if (VariableHorizonsCompat.anyActive(variantNames)) skip = true;
+        return this;
+    }
+
+    public RecipeBuilder copy() {
+        RecipeBuilder copy = copyState();
+        copy.metadataStorage = metadataStorage == null ? null : metadataStorage.copy();
+        return copy;
+    }
+
+    public RecipeBuilder copyNoMetadata() {
+        RecipeBuilder copy = copyState();
+        copy.metadataStorage = null;
+        return copy;
+    }
+
+    private RecipeBuilder copyState() {
+        RecipeBuilder copy = new RecipeBuilder();
+        copy.inputsBasic = copyArray(inputsBasic);
+        copy.inputsOreDict = copyArray(inputsOreDict);
+        copy.outputs = copyArray(outputs);
+        copy.alts = copyArray(alts);
+        copy.altFluidInputs = copyArray(altFluidInputs);
+        copy.altOreIds = altOreIds == null ? null : altOreIds.clone();
+        copy.fluidInputs = copyArray(fluidInputs);
+        copy.fluidOutputs = copyArray(fluidOutputs);
+        copy.inputChances = inputChances == null ? null : inputChances.clone();
+        copy.outputChances = outputChances == null ? null : outputChances.clone();
+        copy.fluidInputChances = fluidInputChances == null ? null : fluidInputChances.clone();
+        copy.fluidOutputChances = fluidOutputChances == null ? null : fluidOutputChances.clone();
+        copy.special = special;
+        copy.duration = duration;
+        copy.eut = eut;
+        copy.specialValue = specialValue;
+        copy.enabled = enabled;
+        copy.hidden = hidden;
+        copy.fakeRecipe = fakeRecipe;
+        copy.mCanBeBuffered = mCanBeBuffered;
+        copy.mNeedsEmptyOutput = mNeedsEmptyOutput;
+        copy.nbtSensitive = nbtSensitive;
+        copy.neiDesc = neiDesc == null ? null : neiDesc.clone();
+        copy.recipeCategory = recipeCategory;
+        copy.checkForCollision = checkForCollision;
+        copy.skip = skip;
+        copy.valid = valid;
+        copy.pendingIntegratedCircuit = pendingIntegratedCircuit;
+        copy.preserveNullItemInputs = preserveNullItemInputs;
+        copy.inputItemCount = inputItemCount;
+        copy.outputItemCount = outputItemCount;
+        copy.inputFluidCount = inputFluidCount;
+        copy.outputFluidCount = outputFluidCount;
+        return copy;
+    }
+
+    public ItemStack getItemInputBasic(int index) {
+        return inputsBasic[index];
+    }
+
+    public Object getItemInputOreDict(int index) {
+        return inputsOreDict[index];
+    }
+
+    public ItemStack getItemOutput(int index) {
+        return outputs[index];
+    }
+
+    public FluidStack getFluidInput(int index) {
+        return fluidInputs[index];
+    }
+
+    public FluidStack getFluidOutput(int index) {
+        return fluidOutputs[index];
+    }
+
+    public ItemStack[] getItemInputsBasic() {
+        return inputsBasic;
+    }
+
+    public Object[] getItemInputsOreDict() {
+        return inputsOreDict;
+    }
+
+    public Object[] getFluidInputsInterchangeable() {
+        if (altFluidInputs == null) {
+            return fluidInputs;
+        }
+        Object[] result = new Object[altFluidInputs.length];
+        for (int i = 0; i < altFluidInputs.length; i++) {
+            FluidStack[] alternatives = altFluidInputs[i];
+            result[i] = alternatives == null || alternatives.length <= 1 ? alternatives == null ? null : alternatives[0]
+                : new SubstituteFluidStack(alternatives);
+        }
+        return result;
+    }
+
+    public ItemStack[] getItemOutputs() {
+        return outputs;
+    }
+
+    public FluidStack[] getFluidInputs() {
+        return fluidInputs;
+    }
+
+    public FluidStack[] getFluidOutputs() {
+        return fluidOutputs;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public int[] getInputChances() {
+        return inputChances;
+    }
+
+    public int[] getOutputChances() {
+        return outputChances;
+    }
+
+    public int[] getFluidInputChances() {
+        return fluidInputChances;
+    }
+
+    public int[] getFluidOutputChances() {
+        return fluidOutputChances;
+    }
+
+    public int getEUt() {
+        return eut;
+    }
+
+    public RecipeCategory getRecipeCategory() {
+        return recipeCategory;
+    }
+
+    public boolean isCheckForCollision() {
+        return checkForCollision;
+    }
+
+    public boolean isValid() {
+        return valid;
+    }
+
+    public RecipeBuilder forceOreDictInput() {
+        if (inputsOreDict != null || inputsBasic == null) {
+            return this;
+        }
+        return itemInputs((Object[]) inputsBasic);
+    }
+
+    public RecipeBuilder validateNoInput() {
+        if (!skip && countValidItemStacks(inputsBasic) > 0) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateNoInputFluid() {
+        if (!skip && countValidFluids(fluidInputs) > 0) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateNoOutput() {
+        if (!skip && countValidItemStacks(outputs) > 0) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateNoOutputFluid() {
+        if (!skip && countValidFluids(fluidOutputs) > 0) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateInputCount(int min, int max) {
+        if (!skip && !withinRange(countValidItemStacks(inputsBasic), min, max)) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateInputFluidCount(int min, int max) {
+        if (!skip && !withinRange(countValidFluids(fluidInputs), min, max)) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateOutputCount(int min, int max) {
+        if (!skip && !withinRange(countValidItemStacks(outputs), min, max)) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateOutputFluidCount(int min, int max) {
+        if (!skip && !withinRange(countValidFluids(fluidOutputs), min, max)) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateAnyInput() {
+        if (!skip && countValidItemStacks(inputsBasic) == 0 && countValidFluids(fluidInputs) == 0) invalidate();
+        return this;
+    }
+
+    public RecipeBuilder validateAnyOutput() {
+        if (!skip && countValidItemStacks(outputs) == 0 && countValidFluids(fluidOutputs) == 0) invalidate();
+        return this;
+    }
+
     public RecipeBuilder addTo(IRecipeMap recipeMap) {
         if (skip) {
             return this;
@@ -434,35 +781,40 @@ public class RecipeBuilder {
             return this;
         }
 
+        recipeMap.doAdd(createUpstreamBuilder());
+        return this;
+    }
+
+    private GTRecipeBuilder createUpstreamBuilder() {
         GTRecipeBuilder builder = GTValues.RA.stdBuilder();
         if (inputsOreDict != null) {
             builder = builder.itemInputs(inputsOreDict);
-        } else if (inputItems != null) {
-            builder = builder.itemInputs(inputItems);
+        } else if (inputsBasic != null) {
+            builder = builder.itemInputs(inputsBasic);
         }
 
-        if (outputItems != null) {
-            builder = builder.itemOutputs(outputItems);
+        if (outputs != null) {
+            builder = builder.itemOutputs(outputs);
         }
 
         if (special != null) {
             builder = builder.special(special);
         }
 
-        if (inputChance != null) {
-            builder = builder.inputChances(inputChance);
+        if (inputChances != null) {
+            builder = builder.inputChances(inputChances);
         }
 
-        if (inputFluidChance != null) {
-            builder = builder.fluidInputChances(inputFluidChance);
+        if (fluidInputChances != null) {
+            builder = builder.fluidInputChances(fluidInputChances);
         }
 
-        if (outputChance != null) {
-            builder = builder.outputChances(outputChance);
+        if (outputChances != null) {
+            builder = builder.outputChances(outputChances);
         }
 
-        if (outputFluidChance != null) {
-            builder = builder.fluidOutputChances(outputFluidChance);
+        if (fluidOutputChances != null) {
+            builder = builder.fluidOutputChances(fluidOutputChances);
         }
 
         if (altFluidInputs != null) {
@@ -472,18 +824,30 @@ public class RecipeBuilder {
                 fluids[i] = alternatives.length == 1 ? alternatives[0] : new SubstituteFluidStack(alternatives);
             }
             builder = builder.fluidInputs(fluids);
-        } else if (inputFluids != null) {
-            builder = builder.fluidInputs(inputFluids);
+        } else if (fluidInputs != null) {
+            builder = builder.fluidInputs(fluidInputs);
         }
 
-        if (outputFluids != null) {
-            builder = builder.fluidOutputs(outputFluids);
+        if (fluidOutputs != null) {
+            builder = builder.fluidOutputs(fluidOutputs);
         }
 
         builder = builder.duration(duration)
             .eut(eut)
             .specialValue(specialValue);
 
+        if (!enabled) {
+            builder = builder.disabled();
+        }
+        if (!mCanBeBuffered) {
+            builder = builder.noBuffer();
+        }
+        if (mNeedsEmptyOutput) {
+            builder = builder.needsEmptyOutput();
+        }
+        if (recipeCategory != null) {
+            builder = builder.recipeCategory(recipeCategory);
+        }
         if (neiDesc != null) {
             builder = builder.setNEIDesc(neiDesc);
         }
@@ -499,8 +863,7 @@ public class RecipeBuilder {
             ((AccessorGTRecipeBuilder) builder).setMetadataStorage(metadataStorage);
         }
 
-        recipeMap.doAdd(builder);
-        return this;
+        return builder;
     }
 
     public RecipeBuilder addTo(RecipeMap<?> recipeMap) {
@@ -510,8 +873,105 @@ public class RecipeBuilder {
         return addTo((IRecipeMap) recipeMap);
     }
 
+    public Collection<GTRecipe> addTo(IRecipeMap... recipeMaps) {
+        if (skip || recipeMaps == null || recipeMaps.length == 0) {
+            return Collections.emptyList();
+        }
+        List<GTRecipe> addedRecipes = new ObjectArrayList<>();
+        normalizeChanceArrays();
+        for (IRecipeMap recipeMap : recipeMaps) {
+            if (recipeMap == null) {
+                continue;
+            }
+            if (shouldUseDirectRecipePath()) {
+                addDirectRecipe(recipeMap);
+            } else {
+                addedRecipes.addAll(recipeMap.doAdd(createUpstreamBuilder()));
+            }
+        }
+        return addedRecipes;
+    }
+
+    public RecipeBuilder reset() {
+        metadataStorage = null;
+        alts = null;
+        altFluidInputs = null;
+        inputChances = null;
+        outputChances = null;
+        fluidInputChances = null;
+        fluidOutputChances = null;
+        duration = -1;
+        enabled = true;
+        eut = -1;
+        fakeRecipe = false;
+        fluidInputs = null;
+        fluidOutputs = null;
+        hidden = false;
+        inputsBasic = null;
+        inputsOreDict = null;
+        mCanBeBuffered = true;
+        mNeedsEmptyOutput = false;
+        nbtSensitive = false;
+        neiDesc = null;
+        recipeCategory = null;
+        outputs = null;
+        special = null;
+        specialValue = 0;
+        skip = false;
+        valid = true;
+        pendingIntegratedCircuit = null;
+        preserveNullItemInputs = false;
+        inputItemCount = 0;
+        outputItemCount = 0;
+        inputFluidCount = 0;
+        outputFluidCount = 0;
+        return this;
+    }
+
     public Optional<GTRecipe> build() {
         return buildRecipe(true);
+    }
+
+    public Optional<GTRecipe.GTRecipe_WithAlt> buildWithAlt() {
+        if (skip) {
+            return Optional.empty();
+        }
+        if (inputsOreDict == null && altFluidInputs == null) {
+            throw new UnsupportedOperationException();
+        }
+        if (!valid) {
+            handleInvalidRecipe();
+            return Optional.empty();
+        }
+        normalizeChanceArrays();
+        preBuildChecks();
+        return Optional.of(
+            decorate(
+                AccessorGTRecipeWithAlt.create(
+                    inputsBasic,
+                    outputs,
+                    fluidInputs,
+                    fluidOutputs,
+                    inputChances,
+                    outputChances,
+                    fluidInputChances,
+                    fluidOutputChances,
+                    special,
+                    duration,
+                    eut,
+                    specialValue,
+                    enabled,
+                    hidden,
+                    fakeRecipe,
+                    mCanBeBuffered,
+                    mNeedsEmptyOutput,
+                    nbtSensitive,
+                    neiDesc,
+                    metadataStorage,
+                    recipeCategory,
+                    alts,
+                    altOreIds,
+                    altFluidInputs)));
     }
 
     private Optional<GTRecipe> buildRecipe(boolean normalizeChances) {
@@ -530,14 +990,14 @@ public class RecipeBuilder {
             return Optional.of(
                 decorate(
                     AccessorGTRecipeWithAlt.create(
-                        inputItems,
-                        outputItems,
-                        inputFluids,
-                        outputFluids,
-                        inputChance,
-                        outputChance,
-                        inputFluidChance,
-                        outputFluidChance,
+                        inputsBasic,
+                        outputs,
+                        fluidInputs,
+                        fluidOutputs,
+                        inputChances,
+                        outputChances,
+                        fluidInputChances,
+                        fluidOutputChances,
                         special,
                         duration,
                         eut,
@@ -558,14 +1018,14 @@ public class RecipeBuilder {
         return Optional.of(
             decorate(
                 AccessorGTRecipe.create(
-                    inputItems,
-                    outputItems,
-                    inputFluids,
-                    outputFluids,
-                    inputChance,
-                    inputFluidChance,
-                    outputChance,
-                    outputFluidChance,
+                    inputsBasic,
+                    outputs,
+                    fluidInputs,
+                    fluidOutputs,
+                    inputChances,
+                    fluidInputChances,
+                    outputChances,
+                    fluidOutputChances,
                     eut,
                     specialValue,
                     enabled,
@@ -624,10 +1084,10 @@ public class RecipeBuilder {
     }
 
     private void normalizeChanceArrays() {
-        inputChance = ArrayExt.fixChancesArray(inputChance, inputItemCount);
-        inputFluidChance = ArrayExt.fixChancesArray(inputFluidChance, inputFluidCount);
-        outputChance = ArrayExt.fixChancesArray(outputChance, outputItemCount);
-        outputFluidChance = ArrayExt.fixChancesArray(outputFluidChance, outputFluidCount);
+        inputChances = ArrayExt.fixChancesArray(inputChances, inputItemCount);
+        fluidInputChances = ArrayExt.fixChancesArray(fluidInputChances, inputFluidCount);
+        outputChances = ArrayExt.fixChancesArray(outputChances, outputItemCount);
+        fluidOutputChances = ArrayExt.fixChancesArray(fluidOutputChances, outputFluidCount);
     }
 
     private boolean shouldUseDirectRecipePath() {
@@ -650,13 +1110,17 @@ public class RecipeBuilder {
         if (stacks == null || stacks.length == 0) {
             return GTValues.emptyItemStackArray;
         }
-        List<ItemStack> validStacks = new ArrayList<>(stacks.length);
+        List<ItemStack> validStacks = new ObjectArrayList<>(stacks.length);
         for (ItemStack stack : stacks) {
             if (GTUtility.isStackValid(stack)) {
                 validStacks.add(stack);
             }
         }
         return validStacks.isEmpty() ? GTValues.emptyItemStackArray : validStacks.toArray(new ItemStack[0]);
+    }
+
+    private static <T> T[] copyArray(T[] values) {
+        return values == null ? null : values.clone();
     }
 
     private int countValidItemStacks(ItemStack[] stacks) {
@@ -672,6 +1136,23 @@ public class RecipeBuilder {
         return count;
     }
 
+    private int countValidFluids(FluidStack[] stacks) {
+        if (stacks == null || stacks.length == 0) {
+            return 0;
+        }
+        int count = 0;
+        for (FluidStack stack : stacks) {
+            if (stack != null && stack.getFluid() != null && stack.amount > 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean withinRange(int value, int min, int max) {
+        return (min < 0 || value >= min) && (max < 0 || value <= max);
+    }
+
     public static void handleInvalidRecipe() {
         if (!DEBUG_MODE_INVALID && !PANIC_MODE_INVALID) {
             return;
@@ -684,6 +1165,26 @@ public class RecipeBuilder {
             throw new IllegalArgumentException("invalid recipe");
         }
     }
+
+    public static void handleInvalidRecipeLowFluids() {
+        handleInvalidRecipe();
+    }
+
+    public static void handleInvalidRecipeLowItems() {
+        handleInvalidRecipe();
+    }
+
+    public static void handleRecipeCollision(String details) {
+        if (!DEBUG_MODE_COLLISION && !PANIC_MODE_COLLISION) {
+            return;
+        }
+        ScienceNotLeisure.LOG.error("Recipe collision detected: {}", details);
+        if (PANIC_MODE_COLLISION) {
+            throw new IllegalArgumentException("Recipe collision");
+        }
+    }
+
+    public static void onConfigLoad() {}
 
     public static ItemStack[] fix(ItemStack[] inputs, boolean aUnsafe) {
         return GTOreDictUnificator

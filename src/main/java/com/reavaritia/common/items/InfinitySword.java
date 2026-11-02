@@ -2,7 +2,6 @@ package com.reavaritia.common.items;
 
 import static com.reavaritia.ReAvaritia.RESOURCE_ROOT_ID;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -34,21 +33,21 @@ import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.EnumHelper;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnllib.utils.GameUtils;
 import com.reavaritia.client.ReAvaCreativeTabs;
+import com.reavaritia.common.ItemLoader;
 import com.reavaritia.utils.enums.ReAvaItemList;
 import com.reavaritia.utils.item.SubtitleDisplay;
 import com.reavaritia.utils.item.ToolHelper;
 import com.science.gtnl.common.entity.EntitySaddleSlime;
-import com.science.gtnl.config.MainConfig;
+import com.science.gtnl.config.ReAvaritiaConfig;
 import com.science.gtnl.mixins.late.botania.AccessorEntityDoppleganger;
 import com.science.gtnl.mixins.late.draconicEvolution.AccessorCustomArmorHandler;
-import com.science.gtnl.utils.Utils;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Optional;
@@ -66,6 +65,7 @@ import galaxyspace.core.entity.boss.EntityGhastBoss;
 import galaxyspace.core.entity.boss.EntitySlimeBoss;
 import galaxyspace.core.entity.boss.EntityWolfBoss;
 import gregtech.api.enums.Mods;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import micdoodle8.mods.galacticraft.core.entities.EntitySkeletonBoss;
 import micdoodle8.mods.galacticraft.planets.mars.entities.EntityCreeperBoss;
 import vazkii.botania.common.entity.EntityDoppleganger;
@@ -84,8 +84,8 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
         .setDamageAllowedInCreativeMode()
         .setMagicDamage();
 
-    public List<Entity> sweepAttackTargets = new ArrayList<>();
-    public List<Entity> magnetTargets = new ArrayList<>();
+    public List<Entity> sweepAttackTargets = new ObjectArrayList<>();
+    public List<Entity> magnetTargets = new ObjectArrayList<>();
     public static final int MAX_ENTITY_PROCESS_PER_TICK = 100;
 
     public InfinitySword() {
@@ -316,7 +316,7 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
                 target.setHealth(newHealth);
             }
 
-            if (MainConfig.re_avaritia.infinity_sword.enableExplosion) {
+            if (ReAvaritiaConfig.infinity_sword.enableExplosion) {
                 world.newExplosion(target, target.posX, target.posY, target.posZ, 250.0F, true, true);
             }
         } else {
@@ -407,7 +407,7 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
             }
 
             if (entity instanceof EntityDragon) {
-                applyPlayerLethalDamage((EntityLivingBase) entity, player);
+                applyPlayerLethalDamage(entity, player);
                 return true;
             }
 
@@ -437,7 +437,7 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
 
         if (entity instanceof EntityPlayer player) {
             if (player.getCurrentEquippedItem() == stack && player.swingProgress == 0.5F && !world.isRemote) {
-                MovingObjectPosition rayTraceResult = Utils.rayTrace(player, false, true, false, 100);
+                MovingObjectPosition rayTraceResult = GameUtils.rayTrace(player, false, true, false, 100);
 
                 if (rayTraceResult != null && rayTraceResult.entityHit != null) {
                     Entity hitEntity = rayTraceResult.entityHit;
@@ -500,7 +500,7 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
 
     @SideOnly(Side.CLIENT)
     public boolean isBadEffectClient(PotionEffect effect) {
-        return net.minecraft.potion.Potion.potionTypes[effect.getPotionID()].isBadEffect();
+        return Potion.potionTypes[effect.getPotionID()].isBadEffect();
     }
 
     public boolean isBadEffectServer(PotionEffect effect) {
@@ -525,7 +525,7 @@ public class InfinitySword extends ItemSword implements ICosmicRenderItem, Subti
 
     @Override
     public EnumRarity getRarity(ItemStack stack) {
-        return EnumHelper.addRarity("COSMIC", EnumChatFormatting.RED, "Cosmic");
+        return ItemLoader.COSMIC;
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.science.gtnl.common.machine.hatch;
 
 import static com.science.gtnl.utils.enums.BlockIcons.OVERLAY_FRONT_PARALLEL_CONTROLLER;
 
+import java.util.Locale;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
@@ -12,30 +14,23 @@ import com.cleanroommc.modularui.factory.PosGuiData;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.value.sync.PanelSyncManager;
-import com.gtnewhorizons.modularui.api.math.Alignment;
-import com.gtnewhorizons.modularui.api.math.Color;
-import com.gtnewhorizons.modularui.api.screen.ModularWindow;
-import com.gtnewhorizons.modularui.api.screen.UIBuildContext;
-import com.gtnewhorizons.modularui.common.widget.DrawableWidget;
-import com.gtnewhorizons.modularui.common.widget.TextWidget;
-import com.gtnewhorizons.modularui.common.widget.textfield.TextFieldWidget;
-import com.science.gtnl.common.gui.modularui.ParallelControllerHatchGui;
-import com.science.gtnl.utils.item.ItemUtils;
+import com.science.gtnl.common.gui.modularui.hatch.ParallelControllerHatchGui;
 
-import gregtech.api.gui.modularui.GTUITextures;
+import gregtech.api.enums.GTValues;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
-import gregtech.api.interfaces.modularui.IAddGregtechLogo;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.metatileentity.implementations.MTEHatch;
 import gregtech.api.render.TextureFactory;
 import lombok.Getter;
 
+@IMetaTileEntity.SkipGenerateName
+@IMetaTileEntity.SkipGenerateDescription
 @Getter
-public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLogo {
+public class ParallelControllerHatch extends MTEHatch {
 
     public int maxParallel;
-    public int parallel = 1;
+    public int parallel;
 
     public ParallelControllerHatch(int aID, String aName, String aNameRegional, int aTier, ITexture... aTextures) {
         super(
@@ -46,7 +41,7 @@ public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLog
             0,
             new String[] { StatCollector.translateToLocal("gtnl.hatch.parallel_controller.tooltip.0"), "", "", "" },
             aTextures);
-        this.maxParallel = setMaxParallel(mTier);
+        this.maxParallel = maxParallelAt(mTier);
         this.parallel = maxParallel;
         int speedBoost = setDurationModifier(mTier);
         int euDiscount = setEUtDiscount(mTier);
@@ -61,7 +56,7 @@ public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLog
     public ParallelControllerHatch(String aName, int aTier, int aInvSlotCount, String[] aDescription,
         ITexture[][][] aTextures) {
         super(aName, aTier, aInvSlotCount, aDescription, aTextures);
-        this.maxParallel = setMaxParallel(mTier);
+        this.maxParallel = maxParallelAt(mTier);
         this.parallel = maxParallel;
         int speedBoost = setDurationModifier(mTier);
         int euDiscount = setEUtDiscount(mTier);
@@ -71,6 +66,18 @@ public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLog
             .format(StatCollector.translateToLocal("gtnl.hatch.parallel_controller.tooltip.2"), speedBoost);
         mDescriptionArray[3] = String
             .format(StatCollector.translateToLocal("gtnl.hatch.parallel_controller.tooltip.3"), euDiscount);
+    }
+
+    @Override
+    public String getLocalNameKey() {
+        if (!hasOwnLocalName()) return super.getLocalNameKey();
+        return "gtnl.hatch.parallel_controller." + GTValues.VN[mTier].toLowerCase(Locale.ROOT) + ".name";
+    }
+
+    @Override
+    public String getLocalName() {
+        if (!hasOwnLocalName()) return super.getLocalName();
+        return StatCollector.translateToLocal(getLocalNameKey());
     }
 
     @Override
@@ -121,37 +128,6 @@ public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLog
     }
 
     @Override
-    @Deprecated
-    public void addUIWidgets(ModularWindow.Builder builder, UIBuildContext buildContext) {
-        // TODO: Remove this mui1 fallback after ParallelControllerHatch mui2 rollout is complete.
-        builder.widget(
-            TextWidget.localised("gtnl.hatch.parallel_controller.label")
-                .setPos(49, 18)
-                .setSize(81, 14))
-            .widget(
-                new TextFieldWidget().setSetterInt(val -> parallel = val)
-                    .setGetterInt(() -> parallel)
-                    .setNumbers(1, maxParallel)
-                    .setOnScrollNumbers(1, 4, 64)
-                    .setTextAlignment(Alignment.Center)
-                    .setTextColor(Color.WHITE.normal)
-                    .setSize(70, 18)
-                    .setPos(54, 36)
-                    .setBackground(GTUITextures.BACKGROUND_TEXT_FIELD));
-        addGregTechLogo(builder);
-    }
-
-    @Override
-    @Deprecated
-    public void addGregTechLogo(ModularWindow.Builder builder) {
-        // TODO: Remove this mui1 fallback after ParallelControllerHatch mui2 rollout is complete.
-        builder.widget(
-            new DrawableWidget().setDrawable(ItemUtils.PICTURE_GTNL_LOGO)
-                .setSize(18, 18)
-                .setPos(151, 80));
-    }
-
-    @Override
     public boolean willExplodeInRain() {
         return false;
     }
@@ -180,11 +156,11 @@ public class ParallelControllerHatch extends MTEHatch implements IAddGregtechLog
         this.parallel = Math.min(maxParallel, Math.max(1, parallel));
     }
 
-    public int setMaxParallel(int mTier) {
-        if (mTier <= 1) {
+    public static int maxParallelAt(int tier) {
+        if (tier <= 1) {
             return 1;
         }
-        return 1 << (2 * (mTier - 2));
+        return 1 << (2 * (tier - 2));
     }
 
     public int setDurationModifier(int mTier) {

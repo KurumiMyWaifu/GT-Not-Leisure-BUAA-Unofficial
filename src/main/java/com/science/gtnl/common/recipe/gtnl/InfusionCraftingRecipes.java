@@ -1,110 +1,61 @@
 package com.science.gtnl.common.recipe.gtnl;
 
-import static thaumcraft.common.config.ConfigItems.itemJarNode;
+import static thaumcraft.common.config.ConfigBlocks.blockCosmeticSolid;
 
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.oredict.OreDictionary;
 
 import com.gtnewhorizon.gtnhlib.util.data.ItemId;
 import com.science.gtnl.api.IRecipePool;
 import com.science.gtnl.common.material.GTNLRecipeMaps;
 import com.science.gtnl.common.recipe.thaumcraft.TCRecipeTools;
-import com.science.gtnl.utils.recipes.RecipeBuilder;
 
-import cpw.mods.fml.common.Optional;
-import cpw.mods.fml.common.registry.GameRegistry;
-import fox.spiteful.avaritia.items.LudicrousItems;
-import gregtech.api.enums.Mods;
+import gregtech.api.enums.GTValues;
 import gregtech.api.enums.TierEU;
 import gregtech.api.interfaces.IRecipeMap;
-import gregtech.api.util.GTModHandler;
+import gregtech.api.objects.OreDictItemStack;
+import gregtech.api.recipe.RecipeMetadataKey;
+import gregtech.api.recipe.metadata.SimpleRecipeMetadataKey;
+import thaumcraft.api.aspects.AspectList;
 
 public class InfusionCraftingRecipes implements IRecipePool {
 
-    public static final ItemStack IC2_MACHINE = GTModHandler.getModItem(Mods.IndustrialCraft2.ID, "blockMachine", 1, 1);
+    private static final ItemId COSMETIC_SOLID_OUTPUT = ItemId.create(new ItemStack(blockCosmeticSolid));
+    public static final RecipeMetadataKey<AspectList> INFUSION_ASPECTS = SimpleRecipeMetadataKey
+        .create(AspectList.class, "gtnl_infusion_aspects");
 
-    public static final ItemStack BLAST_FURNACE_TEMPLATE = GTModHandler
-        .getModItem(Mods.EtFuturumRequiem.ID, "blast_furnace", 1);
+    public static final RecipeMetadataKey<String> INFUSION_RESEARCH = SimpleRecipeMetadataKey
+        .create(String.class, "gtnl_infusion_research");
 
-    public static final Set<ItemId> UNCONSUMED_ITEMS = new HashSet<>();
+    private static final Set<String> TIERED_GLASS_ORES = Arrays.stream(GTValues.VN)
+        .map(tier -> "blockGlass" + tier)
+        .collect(Collectors.toSet());
+    private static final String PLAIN_PANE_ORE = "paneGlassColorless", ANY_PANE_ORE = "paneGlass";
 
-    static {
-        if (Mods.Avaritia.isModLoaded()) addAvaritia();
-
-        if (Mods.BloodMagic.isModLoaded()) {
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "weakBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "apprenticeBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "magicianBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "masterBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "archmageBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "transcendentBloodOrb", 1)));
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.BloodMagic.ID, "creativeFiller", 1)));
+    private static Object[] createInputs(TCRecipeTools.InfusionCraftingRecipe recipe) {
+        ItemStack[] inputs = TCRecipeTools.checkInputSpecial(recipe.getInputItem());
+        Object[] converted = TCRecipeTools.toGTInputs(inputs);
+        // Thaumcraft accepts pedestal items by ore name; only glass keeps that here, other components stay exact.
+        for (int i = 1; i < inputs.length; i++) {
+            if (inputs[i] == null || inputs[i].stackSize <= 0) continue;
+            String glassOre = findGlassOreName(inputs[i]);
+            if (glassOre != null) converted[i] = new OreDictItemStack(glassOre, inputs[i].stackSize);
         }
-        if (Mods.ForbiddenMagic.isModLoaded()) {
-            UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.ForbiddenMagic.ID, "EldritchOrb", 1)));
-        }
-        UNCONSUMED_ITEMS.add(ItemId.create(GTModHandler.getModItem(Mods.Thaumcraft.ID, "FocusWarding", 1)));
+        return converted;
     }
 
-    @Optional.Method(modid = "Avaritia")
-    public static void addAvaritia() {
-        UNCONSUMED_ITEMS.add(ItemId.create(new ItemStack(LudicrousItems.bigPearl)));
-        UNCONSUMED_ITEMS.add(ItemId.create(new ItemStack(LudicrousItems.armok_orb)));
-    }
-
-    public static ItemStack[] checkInputSpecial(ItemStack... itemStacks) {
-        final int len = itemStacks.length;
-        ItemStack[] copy = new ItemStack[len];
-
-        for (int idx = 0; idx < len; idx++) {
-            ItemStack i = itemStacks[idx];
-            if (i == null) {
-                copy[idx] = null;
-                continue;
-            }
-
-            ItemStack out = i.copy();
-
-            if (out.getItem() == IC2_MACHINE.getItem() && BLAST_FURNACE_TEMPLATE != null) {
-                ItemStack bf = BLAST_FURNACE_TEMPLATE.copy();
-                bf.stackSize = out.stackSize;
-                out = bf;
-            }
-
-            if (UNCONSUMED_ITEMS.contains(ItemId.create(out))) {
-                out.stackSize = 0;
-            }
-
-            copy[idx] = out;
+    private static String findGlassOreName(ItemStack stack) {
+        boolean plainPane = false;
+        for (int oreId : OreDictionary.getOreIDs(stack)) {
+            String oreName = OreDictionary.getOreName(oreId);
+            if (TIERED_GLASS_ORES.contains(oreName)) return oreName;
+            plainPane |= PLAIN_PANE_ORE.equals(oreName);
         }
-
-        return copy;
-    }
-
-    public Set<Item> skips;
-
-    public boolean shouldSkip(Item item) {
-        if (null == skips) {
-            skips = new HashSet<>();
-            skips.add(itemJarNode);
-            if (Mods.ThaumicBases.isModLoaded()) {
-                Item revolver = GameRegistry.findItem(Mods.ThaumicBases.ID, "revolver");
-                if (null != revolver) {
-                    skips.add(revolver);
-                }
-            }
-            if (Mods.Gadomancy.isModLoaded()) {
-                Item itemEtherealFamiliar = GameRegistry.findItem(Mods.Gadomancy.ID, "ItemEtherealFamiliar");
-                if (null != itemEtherealFamiliar) {
-                    skips.add(itemEtherealFamiliar);
-                }
-            }
-        }
-
-        return skips.contains(item);
+        return plainPane ? ANY_PANE_ORE : null;
     }
 
     @Override
@@ -112,23 +63,43 @@ public class InfusionCraftingRecipes implements IRecipePool {
         TCRecipeTools.getInfusionCraftingRecipe();
 
         IRecipeMap IIC = GTNLRecipeMaps.IndustrialInfusionCraftingRecipes;
-        for (TCRecipeTools.InfusionCraftingRecipe Recipe : TCRecipeTools.ICR) {
-            if (shouldSkip(
-                Recipe.getOutput()
-                    .getItem()))
-                continue;
 
-            RecipeBuilder.builder()
-                .ignoreCollision()
-                .clearInvalid()
-                .itemInputsUnified(checkInputSpecial(Recipe.getInputItem()))
-                .itemOutputs((Recipe.getOutput()))
-                .fluidInputs()
-                .fluidOutputs()
-                .duration(20)
-                .eut(TierEU.RECIPE_LV)
-                .addTo(IIC);
+        for (TCRecipeTools.InfusionCraftingRecipe Recipe : TCRecipeTools.ICR) {
+            if (TCRecipeTools.shouldSkipThaumcraftItem(
+                Recipe.getOutput()
+                    .getItem())) {
+                continue;
+            }
+
+            boolean needsCircuit = COSMETIC_SOLID_OUTPUT.equals(ItemId.create(Recipe.getOutput()));
+            if (needsCircuit) {
+                TCRecipeTools.addArcaneRecipeWithCircuit(
+                    IIC,
+                    createInputs(Recipe),
+                    new ItemStack[] { Recipe.getOutput() },
+                    Recipe.getInputAspects(),
+                    Recipe.getResearch(),
+                    INFUSION_ASPECTS,
+                    INFUSION_RESEARCH,
+                    TCRecipeTools.computeAspectDuration(
+                        Recipe.getInputAspects(),
+                        TCRecipeTools.INFUSION_DURATION_TICKS_PER_ASPECT),
+                    TierEU.RECIPE_LV,
+                    11);
+                continue;
+            }
+
+            TCRecipeTools.addArcaneRecipe(
+                IIC,
+                createInputs(Recipe),
+                new ItemStack[] { Recipe.getOutput() },
+                Recipe.getInputAspects(),
+                Recipe.getResearch(),
+                INFUSION_ASPECTS,
+                INFUSION_RESEARCH,
+                TCRecipeTools
+                    .computeAspectDuration(Recipe.getInputAspects(), TCRecipeTools.INFUSION_DURATION_TICKS_PER_ASPECT),
+                TierEU.RECIPE_LV);
         }
     }
-
 }
