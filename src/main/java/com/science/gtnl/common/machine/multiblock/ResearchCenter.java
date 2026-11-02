@@ -44,6 +44,7 @@ import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.ITexture;
 import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
+import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.modularui2.GTGuiTextures;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.RecipeMaps;
@@ -258,7 +259,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.researchStacksToConsume.addAll(researchStacksToConsume);
         this.dataSticksToConsume = outputs.size();
         this.computationRequired = this.computationRemaining = computationRequired;
-        setPacketLossDecayFrom(this.computationRequired);
+        applyPacketLossDecayFrom(this.computationRequired);
         this.mOutputItems = outputs.toArray(new ItemStack[0]);
         this.mEUt = recipeEUt;
         this.eRequiredData = 0;
@@ -547,7 +548,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.eRequiredData = 0;
         this.eAmpereFlow = 0;
         this.computationRequired = this.computationRemaining = 0;
-        setPacketLossDecayFrom(0);
+        applyPacketLossDecayFrom(0);
         return SimpleCheckRecipeResult.ofSuccess("scanning");
     }
 
@@ -746,11 +747,25 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
 
         ItemStack singleItem = GTUtility.copyAmount(1, stack);
         for (int i = 0; i < stack.stackSize; i++) {
-            if (!depleteInput(singleItem)) {
+            if (!depleteItemDirectly(singleItem)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private boolean depleteItemDirectly(ItemStack stack) {
+        for (MTEHatchInputBus hatch : GTUtility.validMTEList(mInputBusses)) {
+            IGregTechTileEntity base = hatch.getBaseMetaTileEntity();
+            for (int slot = base.getSizeInventory() - 1; slot >= 0; slot--) {
+                ItemStack inSlot = base.getStackInSlot(slot);
+                if (GTUtility.areStacksEqual(stack, inSlot) && inSlot.stackSize >= stack.stackSize) {
+                    base.decrStackSize(slot, stack.stackSize);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private int countDepletableItems(ItemStack stack) {
@@ -764,7 +779,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         return count;
     }
 
-    private void setPacketLossDecayFrom(long value) {
+    private void applyPacketLossDecayFrom(long value) {
         ((AccessorMTEResearchStation) this).setPacketLossDecayFrom(value);
     }
 
@@ -780,7 +795,7 @@ public class ResearchCenter extends MTEResearchStation implements IResearchStati
         this.mEfficiencyIncrease = 0;
         this.mEUt = 0;
         this.computationRequired = this.computationRemaining = 0;
-        setPacketLossDecayFrom(0);
+        applyPacketLossDecayFrom(0);
     }
 
 }
