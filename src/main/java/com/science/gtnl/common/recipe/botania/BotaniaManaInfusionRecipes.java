@@ -12,7 +12,7 @@ public class BotaniaManaInfusionRecipes implements IRecipePool {
 
     @Override
     public void loadRecipes() {
-        ItemStack buildingKit = ModsItemlist.IWillFindYouIfuBuildingKit.getIfLoaded(1);
+        ItemStack buildingKit = ModsItemlist.IWillFindYouIfuBuildingKit.get(1);
         if (buildingKit != null) {
             BotaniaAPI.registerManaInfusionRecipe(GTNLItemList.ManaElectricProspectorTool.get(1), buildingKit, 5000);
         }

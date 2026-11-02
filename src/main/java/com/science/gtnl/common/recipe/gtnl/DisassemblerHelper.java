@@ -61,7 +61,7 @@ public class DisassemblerHelper {
 
         for (ModsItemlist track : new ModsItemlist[] { ModsItemlist.RailcraftTrack,
             ModsItemlist.RailcraftTrackLegacyDamage736, ModsItemlist.RailcraftTrackLegacyDamage816 }) {
-            ItemStack stack = track.getIfLoaded(1L);
+            ItemStack stack = track.get(1L);
             if (stack != null) inputBlacklist.add(new GTItemStack(stack));
         }
 

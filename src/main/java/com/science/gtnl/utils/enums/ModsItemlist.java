@@ -4,8 +4,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 
 import com.gtnllib.mod.ModList;
+import com.gtnllib.mod.ModUtils;
 
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.registry.GameRegistry;
 import gregtech.api.enums.Mods;
 import gregtech.api.util.GTModHandler;
@@ -1218,6 +1218,7 @@ public enum ModsItemlist {
     }
 
     public ItemStack get(long amount) {
+        if (!ModUtils.isModLoaded(modId)) return null;
         if (ic2NamedItem) {
             ItemStack stack = IC2Items.getItem(registryName);
             if (stack == null) return null;
@@ -1229,12 +1230,8 @@ public enum ModsItemlist {
         return GTModHandler.getModItem(modId, registryName, amount, metadata);
     }
 
-    // GT logs a stack trace for every mod item it cannot find; this returns null quietly when the mod is missing.
-    public ItemStack getIfLoaded(long amount) {
-        return Loader.isModLoaded(modId) ? get(amount) : null;
-    }
-
     public ItemStack getOr(long amount, ItemStack fallback) {
-        return Loader.isModLoaded(modId) ? get(amount) : fallback;
+        ItemStack stack = get(amount);
+        return stack == null ? fallback : stack;
     }
 }

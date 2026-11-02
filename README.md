@@ -52,7 +52,7 @@
 
 ## 🔧 Required Dependencies
 
-*   [GTNLLib (>= 1.1)](https://github.com/GTNotLeisure/GTNLLib)
+*   [GTNLLib (>= 1.1.3)](https://github.com/GTNotLeisure/GTNLLib)
 *   [BetterQuestingAPI (>= 1.1.3)](https://github.com/GTNotLeisure/BetterQuestingAPI)
 
 ## ✨ Key Mechanics

@@ -70,7 +70,7 @@ public class TCRecipeTools {
             ModsItemlist.BloodMagicMasterBloodOrb, ModsItemlist.BloodMagicArchmageBloodOrb,
             ModsItemlist.BloodMagicTranscendentBloodOrb, ModsItemlist.BloodMagicCreativeFiller,
             ModsItemlist.ForbiddenMagicEldritchOrb }) {
-            ItemStack stack = orb.getIfLoaded(1);
+            ItemStack stack = orb.get(1);
             if (stack != null) UNCONSUMED_ITEMS.add(ItemId.create(stack));
         }
 
