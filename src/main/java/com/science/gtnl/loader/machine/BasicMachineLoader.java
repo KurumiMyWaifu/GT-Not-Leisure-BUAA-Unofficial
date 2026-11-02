@@ -13,6 +13,7 @@ import com.science.gtnl.common.machine.basicMachine.SmallEssentiaSmeltery;
 import com.science.gtnl.common.machine.basicMachine.SteamAssemblerBronze;
 import com.science.gtnl.common.machine.basicMachine.SteamAssemblerSteel;
 import com.science.gtnl.common.machine.basicMachine.SteamTurbine;
+import com.science.gtnl.common.machine.basicMachine.StructureCompiler;
 import com.science.gtnl.common.machine.hatch.EnergyTransferNode;
 import com.science.gtnl.common.machine.hatch.OredictInputBusME;
 import com.science.gtnl.common.machine.hatch.OutputBusMEProxy;
@@ -275,6 +276,14 @@ public class BasicMachineLoader {
                 11));
         AnimatedTooltipHandler
             .addItemTooltip(GTNLItemList.WirelessVacuumConveyorOutputHatch.get(1), AnimatedText.GT_NOT_LEISURE);
+
+        GTNLItemList.StructureCompiler.set(
+            new StructureCompiler(
+                GTNLMachineID.STRUCTURE_COMPILER.ID,
+                "StructureCompiler",
+                StatCollector.translateToLocal("gtnl.machine.structure_compiler.name"),
+                5));
+        AnimatedTooltipHandler.addItemTooltip(GTNLItemList.StructureCompiler.get(1), AnimatedText.GT_NOT_LEISURE);
     }
 
     public enum GasCollectorTier {

@@ -1192,6 +1192,7 @@ public enum GTNLItemList implements IItemContainer {
     SmallEssentiaSmelteryLV,
     SmallEssentiaSmelteryMV,
     SmallEssentiaSmelteryHV,
+    StructureCompiler,
     AdvancedSuperDualInputHatchME,
     SuperDualInputHatchME,
     TypeFilteredInputBusME,

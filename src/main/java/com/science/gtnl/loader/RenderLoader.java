@@ -5,10 +5,12 @@ import net.minecraft.client.renderer.entity.RenderLeashKnot;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.MinecraftForgeClient;
+import net.minecraftforge.common.MinecraftForge;
 
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.science.gtnl.ScienceNotLeisure;
 import com.science.gtnl.asm.GTNLEarlyCoreMod;
+import com.science.gtnl.client.structure.StructureCompilerClientExport;
 import com.science.gtnl.common.block.blocks.item.ItemBlockEternalGregTechWorkshopRender;
 import com.science.gtnl.common.block.blocks.item.ItemBlockNanoPhagocytosisPlantRender;
 import com.science.gtnl.common.block.blocks.tile.TileEntityArtificialStar;
@@ -24,6 +26,7 @@ import com.science.gtnl.common.block.blocks.tile.TileEntityWaterCandle;
 import com.science.gtnl.common.entity.EntityPlayerLeashKnot;
 import com.science.gtnl.common.entity.EntitySaddleSlime;
 import com.science.gtnl.common.entity.EntitySteamRocket;
+import com.science.gtnl.common.render.StructureCompilerRenderer;
 import com.science.gtnl.common.render.entity.NullPointerExceptionRender;
 import com.science.gtnl.common.render.entity.SaddleSlimeRender;
 import com.science.gtnl.common.render.entity.SteamRocketRender;
@@ -77,6 +80,8 @@ public class RenderLoader implements IContentLoader {
     @Override
     @SideOnly(Side.CLIENT)
     public void clientInit() {
+        MinecraftForge.EVENT_BUS.register(new StructureCompilerRenderer());
+        MinecraftForge.EVENT_BUS.register(new StructureCompilerClientExport());
         WATER_CANDLE_RENDER_ID = RenderingRegistry.getNextAvailableRenderId();
         ENDER_ELEVATOR_RENDER_ID = RenderingRegistry.getNextAvailableRenderId();
         MULTI_ESSENTIA_TUBE_RENDER_ID = RenderingRegistry.getNextAvailableRenderId();
