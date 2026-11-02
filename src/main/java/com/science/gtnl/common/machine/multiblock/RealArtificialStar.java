@@ -82,12 +82,12 @@ public class RealArtificialStar extends MultiMachineBase<RealArtificialStar> {
     public static long MaxOfAntimatterFuelRod = 1024;
     public static long MaxOfStrangeAnnihilationFuelRod = 32768;
     public static boolean configEnableDefaultRender = MachineConfig.artificial_star.enableRenderDefaultArtificialStar;
-    public static final ItemStack TST_PROTO = ModsItemlist.TwistSpaceStellarStructuralFrameMaterial.get(1);
-    private static final ItemStack DEPLETED_ROD = GTNLItemList.DepletedExcitedNaquadahFuelRod.get(1);
-    private static final ItemStack ENHANCEMENT_CORE = GTNLItemList.EnhancementCore.get(1);
-    private static final ItemStack TST_ANTIMATTER = ModsItemlist.TwistSpaceAntimatter.getIfLoaded(1);
-    private static final ItemStack TST_FUEL_ROD = ModsItemlist.TwistSpaceAntimatterFuelRod.getIfLoaded(1);
-    private static final ItemStack TST_STRANGE_ROD = ModsItemlist.TwistSpaceStrangeAnnihilationFuelRod.getIfLoaded(1);
+    public static final ItemStack TST_PROTO = ModsItemlist.TwistSpaceStellarStructuralFrameMaterial.getIfLoaded(1);
+    public static final ItemStack DEPLETED_ROD = GTNLItemList.DepletedExcitedNaquadahFuelRod.get(1);
+    public static final ItemStack ENHANCEMENT_CORE = GTNLItemList.EnhancementCore.get(1);
+    public static final ItemStack TST_ANTIMATTER = ModsItemlist.TwistSpaceAntimatter.getIfLoaded(1);
+    public static final ItemStack TST_FUEL_ROD = ModsItemlist.TwistSpaceAntimatterFuelRod.getIfLoaded(1);
+    public static final ItemStack TST_STRANGE_ROD = ModsItemlist.TwistSpaceStrangeAnnihilationFuelRod.getIfLoaded(1);
 
     public String ownerName;
     public UUID ownerUUID;
