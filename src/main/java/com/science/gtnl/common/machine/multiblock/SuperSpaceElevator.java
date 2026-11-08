@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.multiblock;
 
-import static bartworks.common.loaders.ItemRegistry.bw_realglas;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofBlock;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.ofChain;
 import static com.gtnewhorizon.structurelib.structure.StructureUtility.onElementPass;
@@ -18,6 +17,7 @@ import static gregtech.api.enums.HatchElement.OutputBus;
 import static gregtech.api.enums.HatchElement.OutputHatch;
 import static gregtech.api.metatileentity.BaseTileEntity.TOOLTIP_DELAY;
 import static gregtech.api.util.GTStructureUtility.buildHatchAdder;
+import static gregtech.api.util.GTStructureUtility.chainAllGlasses;
 import static gregtech.api.util.GTStructureUtility.ofFrame;
 import static gregtech.common.misc.WirelessNetworkManager.addEUToGlobalEnergyMap;
 import static gregtech.common.misc.WirelessNetworkManager.getUserEU;
@@ -238,6 +238,7 @@ public class SuperSpaceElevator extends TTMultiblockBase
             .addDynamoHatch("0+", StatCollector.translateToLocal("gtnl.machine.super_space_elevator.casing"))
             .addSubChannelUsage(GTStructureChannels.TIER_MACHINE_CASING)
             .addSubChannelUsage(GTStructureChannels.STRUCTURE_HEIGHT)
+            .addSubChannelUsage(GTStructureChannels.BOROGLASS)
             .toolTipFinisher();
         return tt;
     }
@@ -323,7 +324,7 @@ public class SuperSpaceElevator extends TTMultiblockBase
             .addElement('H', ofBlock(sBlockCasingsSE, 1))
             .addElement('I', Casings.DimensionallyTranscendentCasing.asElement())
             .addElement('J', ofBlock(BlockLoader.defcCasingBlock, 7))
-            .addElement('K', ofBlock(bw_realglas, 14))
+            .addElement('K', chainAllGlasses())
             .addElement(
                 'L',
                 buildHatchAdder(SuperSpaceElevator.class)

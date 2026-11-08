@@ -449,6 +449,86 @@ public class Utils {
         return merged;
     }
 
+    /**
+     * Merges two item output arrays by item type (item, damage and NBT). Stack sizes of equal stacks are added
+     * together instead of appending duplicate entries. This keeps the wireless output lists bounded by the number of
+     * unique output types, which is required to avoid oversized GUI sync packets.
+     */
+    public static ItemStack[] mergeItemStacks(ItemStack[] array1, ItemStack[] array2) {
+        if (array1 == null || array1.length < 1) {
+            return array2 == null ? new ItemStack[0] : copyItemStackArray(array2);
+        }
+        if (array2 == null || array2.length < 1) {
+            return copyItemStackArray(array1);
+        }
+        List<ItemStack> merged = new ArrayList<>(array1.length + array2.length);
+        mergeItemStacksInto(merged, array1);
+        mergeItemStacksInto(merged, array2);
+        return merged.toArray(new ItemStack[0]);
+    }
+
+    private static void mergeItemStacksInto(List<ItemStack> merged, ItemStack[] stacks) {
+        for (ItemStack stack : stacks) {
+            if (stack == null) continue;
+            boolean found = false;
+            for (ItemStack existing : merged) {
+                if (GTUtility.areStacksEqual(existing, stack)) {
+                    long total = (long) existing.stackSize + stack.stackSize;
+                    existing.stackSize = (int) Math.min(total, Integer.MAX_VALUE);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                merged.add(stack.copy());
+            }
+        }
+    }
+
+    /**
+     * Merges two fluid output arrays by fluid type (fluid and NBT). Amounts of equal fluids are added together
+     * instead of appending duplicate entries.
+     */
+    public static FluidStack[] mergeFluidStacks(FluidStack[] array1, FluidStack[] array2) {
+        if (array1 == null || array1.length < 1) {
+            return array2 == null ? new FluidStack[0] : copyFluidStackArray(array2);
+        }
+        if (array2 == null || array2.length < 1) {
+            return copyFluidStackArray(array1);
+        }
+        List<FluidStack> merged = new ArrayList<>(array1.length + array2.length);
+        mergeFluidStacksInto(merged, array1);
+        mergeFluidStacksInto(merged, array2);
+        return merged.toArray(new FluidStack[0]);
+    }
+
+    private static void mergeFluidStacksInto(List<FluidStack> merged, FluidStack[] stacks) {
+        for (FluidStack stack : stacks) {
+            if (stack == null || stack.amount <= 0) continue;
+            boolean found = false;
+            for (FluidStack existing : merged) {
+                if (existing.isFluidEqual(stack)) {
+                    long total = (long) existing.amount + stack.amount;
+                    existing.amount = (int) Math.min(total, Integer.MAX_VALUE);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                merged.add(stack.copy());
+            }
+        }
+    }
+
+    private static FluidStack[] copyFluidStackArray(FluidStack[] array) {
+        if (array == null) return new FluidStack[0];
+        FluidStack[] result = new FluidStack[array.length];
+        for (int i = 0; i < result.length; i++) {
+            if (array[i] != null) result[i] = array[i].copy();
+        }
+        return result;
+    }
+
     public static <T> T[] mergeArray(T[] array1, T[] array2) {
         if (array1 == null || array1.length < 1) {
             return array2;

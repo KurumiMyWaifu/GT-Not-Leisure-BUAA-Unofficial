@@ -31,7 +31,6 @@ import com.science.gtnl.utils.Utils;
 import com.science.gtnl.utils.recipes.GTNLOverclockCalculator;
 import com.science.gtnl.utils.recipes.GTNLParallelHelper;
 import com.science.gtnl.utils.recipes.GTNLProcessingLogic;
-import com.science.gtnl.utils.structure.GTNLStructureErrors;
 
 import bartworks.common.loaders.FluidLoader;
 import bartworks.system.material.WerkstoffLoader;
@@ -48,9 +47,11 @@ import gregtech.api.interfaces.metatileentity.IMetaTileEntity;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.api.items.MetaGeneratedTool;
 import gregtech.api.logic.ProcessingLogic;
+import gregtech.api.metatileentity.implementations.MTEHatchInputBus;
 import gregtech.api.recipe.RecipeMap;
 import gregtech.api.recipe.check.CheckRecipeResult;
 import gregtech.api.recipe.check.CheckRecipeResultRegistry;
+import gregtech.api.recipe.check.SimpleCheckRecipeResult;
 import gregtech.api.render.TextureFactory;
 import gregtech.api.structure.error.StructureError;
 import gregtech.api.util.GTRecipe;
@@ -59,6 +60,7 @@ import gregtech.api.util.GTUtility;
 import gregtech.api.util.IGTHatchAdder;
 import gregtech.api.util.MultiblockTooltipBuilder;
 import gtPlusPlus.xmod.gregtech.api.metatileentity.implementations.MTEHatchTurbine;
+import gtPlusPlus.xmod.gregtech.common.tileentities.machines.multi.production.turbines.MTELargerTurbineBaseLegacy;
 
 @IMetaTileEntity.SkipGenerateDescription
 public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell> {
@@ -178,17 +180,6 @@ public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell>
     }
 
     @Override
-    public void checkHatch(List<StructureError> errors) {
-        for (MTEHatchTurbine h : GTUtility.validMTEList(this.mTurbineHatches)) {
-            if (!h.hasTurbine()) {
-                errors.add(GTNLStructureErrors.invalidHatchConfiguration());
-                break;
-            }
-        }
-        super.checkHatch(errors);
-    }
-
-    @Override
     protected int getGlassEnergyTierLimit() {
         return VoltageIndex.UMV;
     }
@@ -219,11 +210,31 @@ public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell>
         costingEU = BigInteger.ZERO;
         costingEUText = Utils.ZERO_STRING;
         totalOverclockedDuration = 0;
-        turbineTier = 0;
+        mOutputItems = null;
+        mOutputFluids = null;
 
+        // The structure can be formed with empty rotor assemblies. After formation, turbine rotors are pulled from
+        // the input buses into the rotor assemblies; without four valid rotors the machine simply refuses to work.
+        insertTurbinesFromInputBuses();
+
+        int turbineHatchCount = 0;
+        turbineTier = Integer.MAX_VALUE;
         for (MTEHatchTurbine h : GTUtility.validMTEList(this.mTurbineHatches)) {
-            if (!h.hasTurbine()) return CheckRecipeResultRegistry.NO_RECIPE;
-            turbineTier = GTUtility.min(turbineTier, MetaGeneratedTool.getPrimaryMaterial(h.getTurbine()).mToolQuality);
+            turbineHatchCount++;
+            if (!h.hasTurbine()) {
+                return SimpleCheckRecipeResult.ofFailure("invalid_hatch_configuration");
+            }
+            Materials turbineMaterial = MetaGeneratedTool.getPrimaryMaterial(h.getTurbine());
+            if (turbineMaterial == null) {
+                return SimpleCheckRecipeResult.ofFailure("invalid_hatch_configuration");
+            }
+            turbineTier = Math.min(turbineTier, turbineMaterial.mToolQuality);
+        }
+        if (turbineHatchCount != 4) {
+            return SimpleCheckRecipeResult.ofFailure("invalid_hatch_configuration");
+        }
+        if (turbineTier == Integer.MAX_VALUE) {
+            turbineTier = 0;
         }
 
         if (!wirelessMode) {
@@ -250,6 +261,9 @@ public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell>
 
         outer: for (ItemStack stack : original) {
             if (stack == null) continue;
+            // Turbines are consumed by the rotor assemblies, not by the crusher recipe. Any surplus turbines left in
+            // the input bus must not be treated as recipe inputs.
+            if (MTELargerTurbineBaseLegacy.isValidTurbine(stack)) continue;
 
             for (ItemStack existing : merged) {
                 if (GTUtility.areStacksEqual(existing, stack)) {
@@ -286,6 +300,32 @@ public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell>
         mEfficiencyIncrease = 10000;
         mMaxProgresstime = totalOverclockedDuration;
         return CheckRecipeResultRegistry.SUCCESSFUL;
+    }
+
+    private void insertTurbinesFromInputBuses() {
+        boolean changed = false;
+        for (MTEHatchTurbine hatch : GTUtility.validMTEList(this.mTurbineHatches)) {
+            if (hatch.hasTurbine()) continue;
+            boolean inserted = false;
+            for (MTEHatchInputBus bus : GTUtility.validMTEList(this.mInputBusses)) {
+                for (int slot = 0; slot < bus.getSizeInventory(); slot++) {
+                    ItemStack stack = bus.getStackInSlot(slot);
+                    if (!MTELargerTurbineBaseLegacy.isValidTurbine(stack)) continue;
+                    ItemStack turbine = stack.copy();
+                    turbine.stackSize = 1;
+                    if (hatch.insertTurbine(turbine)) {
+                        bus.decrStackSize(slot, 1);
+                        inserted = true;
+                        changed = true;
+                        break;
+                    }
+                }
+                if (inserted) break;
+            }
+        }
+        if (changed) {
+            updateSlots();
+        }
     }
 
     @Override
@@ -352,8 +392,8 @@ public class HighwayToHell extends WirelessEnergyMultiMachineBase<HighwayToHell>
 
         costingEU = costingEU.add(costEU);
 
-        mOutputItems = Utils.mergeArray(mOutputItems, processingLogic.getOutputItems());
-        mOutputFluids = Utils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+        mOutputItems = Utils.mergeItemStacks(mOutputItems, processingLogic.getOutputItems());
+        mOutputFluids = Utils.mergeFluidStacks(mOutputFluids, processingLogic.getOutputFluids());
         totalOverclockedDuration += processingLogic.getDuration();
 
         endRecipeProcessing();

@@ -47,7 +47,7 @@ public class GrandAssemblyLineGui extends GTNLMultiBlockBaseGui<GrandAssemblyLin
         IPanelHandler panel = syncManager.syncedPanel(
             MIN_RECIPE_TIME_PANEL_KEY,
             true,
-            (panelSyncManager, panelHandler) -> createMinRecipeTimePanel(parent, panelSyncManager));
+            (panelSyncManager, panelHandler) -> createMinRecipeTimePanel(parent, syncManager));
 
         return new ButtonWidget<>().size(16, 16)
             .background(GTGuiTextures.BUTTON_STANDARD)

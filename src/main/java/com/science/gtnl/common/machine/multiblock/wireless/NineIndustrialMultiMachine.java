@@ -332,6 +332,8 @@ public class NineIndustrialMultiMachine extends WirelessEnergyMultiMachineBase<N
     public CheckRecipeResult checkProcessing() {
         costingEU = BigInteger.ZERO;
         costingEUText = Utils.ZERO_STRING;
+        mOutputItems = null;
+        mOutputFluids = null;
 
         if (!wirelessMode) return handleNonWirelessModeProcessing();
 
@@ -387,7 +389,7 @@ public class NineIndustrialMultiMachine extends WirelessEnergyMultiMachineBase<N
                 }
             }
         }
-        mOutputItems = Utils.mergeArray(mOutputItems, outputItems);
+        mOutputItems = Utils.mergeItemStacks(mOutputItems, outputItems);
 
         FluidStack[] outputFluids = processingLogic.getOutputFluids();
         if (outputFluids != null) {
@@ -399,7 +401,7 @@ public class NineIndustrialMultiMachine extends WirelessEnergyMultiMachineBase<N
                 }
             }
         }
-        mOutputFluids = Utils.mergeArray(mOutputFluids, outputFluids);
+        mOutputFluids = Utils.mergeFluidStacks(mOutputFluids, outputFluids);
 
         endRecipeProcessing();
         return result;

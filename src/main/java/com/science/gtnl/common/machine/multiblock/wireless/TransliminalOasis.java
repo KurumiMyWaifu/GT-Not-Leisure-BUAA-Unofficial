@@ -178,6 +178,8 @@ public class TransliminalOasis extends WirelessEnergyMultiMachineBase<Translimin
         costingEUText = Utils.ZERO_STRING;
         totalOverclockedDuration = 0;
         cycleNow = 0;
+        mOutputItems = null;
+        mOutputFluids = null;
 
         if (!wirelessMode) return super.checkProcessing();
 
@@ -242,8 +244,8 @@ public class TransliminalOasis extends WirelessEnergyMultiMachineBase<Translimin
         }
 
         costingEU = costingEU.add(costEU);
-        mOutputItems = Utils.mergeArray(mOutputItems, processingLogic.getOutputItems());
-        mOutputFluids = Utils.mergeArray(mOutputFluids, processingLogic.getOutputFluids());
+        mOutputItems = Utils.mergeItemStacks(mOutputItems, processingLogic.getOutputItems());
+        mOutputFluids = Utils.mergeFluidStacks(mOutputFluids, processingLogic.getOutputFluids());
         totalOverclockedDuration += processingLogic.getDuration();
 
         endRecipeProcessing();

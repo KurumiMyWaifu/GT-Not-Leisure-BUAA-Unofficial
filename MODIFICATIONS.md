@@ -8,7 +8,7 @@ affiliated with, endorsed by, or supported by the upstream authors.
 - Upstream version string: `0.2.7-pre3-dev-290.37+082483e468`
 - Target modpack: GT: New Horizons `2.9.0-beta-3` (Minecraft 1.7.10, Forge 10.13.4.1614)
 - Modification date: **2026-10-18** (glass replacement); **2026-10-20**
-  (client crash fixes)
+  (client crash fixes); **2026-10-24** (casing names and petri dish non-consumption)
 - Modified by: `KurumiMyWaifu` (`https://github.com/KurumiMyWaifu`)
 - License of the modifications: **GNU Lesser General Public License v3.0
   (LGPL-3.0)**, the same license as the upstream project. See `LICENSE.txt`.
@@ -146,6 +146,36 @@ File:
 - Added a short "unofficial modified fork" notice at the top of `README.md`
   pointing to this file.
 
+### 6. Atomic Energy Excitation Plant casing names (2026-10-24)
+
+`AtomicEnergyExcitationPlant` uses BartWorks casings at metadata
+`31_766 + 129` (`31895`) for its `H` and `I` structure elements. The matching
+`GTNLMaterials.Neutronium` Werkstoff registration was commented out, so
+BartWorks fell back to `Materials._NULL`; the blocks displayed as
+`null Casing` and `Bolted null Casing`.
+
+The `Neutronium` Werkstoff is now registered again with
+`Materials.Neutronium`, `ADD_CASINGS_ONLY`, `Types.ELEMENT`, and ID
+`31_766 + 129`. This also fixes `HighwayToHell`, which uses the same casing
+metadata. The `Bronze` Werkstoff (`31_766 + 300`) remains intentionally
+disabled.
+
+File:
+
+- `src/main/java/com/science/gtnl/common/material/GTNLMaterials.java`
+
+### 7. Petrochemical Plant petri dish is non-consumed (2026-10-24)
+
+In the Xenoxene Xenoxsis recipe of the Petrochemical Plant, the
+`petri dish with a culture` input now uses `GTUtility.copyAmount(0, ...)`.
+This is the same `stackSize == 0` convention used by programmed circuits in
+assembler recipes: the item is still required to match the recipe, but it is
+not consumed.
+
+File:
+
+- `src/main/java/com/science/gtnl/common/recipe/gtnl/PetrochemicalPlantRecipes.java`
+
 ## Verification
 
 - `grep -r "blockAlloyGlass" src/` returns no matches.
@@ -158,6 +188,11 @@ File:
 - Both wireless steam hatch `onFirstTick` implementations check
   `isServerSide()` before any team/username lookup.
 - `TeamNetworkManager.getPlayerName` does not throw for uncached UUIDs.
+- The compiled `GTNLMaterials.run()` registers a `Werkstoff` for ID `31895`
+  with `Materials.Neutronium`.
+- The compiled Petrochemical Plant recipe passes `0` to
+  `GTUtility.copyAmount(...)` for the Xenoxene Xenoxsis petri dish.
+- `gradle assemble` completes successfully.
 
 ## Building
 

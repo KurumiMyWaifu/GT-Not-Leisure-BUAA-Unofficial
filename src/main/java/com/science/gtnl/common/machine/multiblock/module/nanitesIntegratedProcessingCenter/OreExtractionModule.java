@@ -1,6 +1,5 @@
 package com.science.gtnl.common.machine.multiblock.module.nanitesIntegratedProcessingCenter;
 
-import static bartworks.common.loaders.ItemRegistry.bw_realglas;
 import static com.science.gtnl.ScienceNotLeisure.RESOURCE_ROOT_ID;
 
 import java.util.List;
@@ -104,7 +103,7 @@ public class OreExtractionModule extends NanitesBaseModule<OreExtractionModule> 
             .addElement('L', Casings.TungstensteelTurbineCasing.asElement())
             .addElement('M', GTStructureUtility.ofFrame(Materials.Invar))
             .addElement('N', GTNLCasings.TungstensteelGearbox.asElement())
-            .addElement('O', StructureUtility.ofBlock(bw_realglas, 14))
+            .addElement('O', GTStructureUtility.chainAllGlasses())
             .build();
     }
 

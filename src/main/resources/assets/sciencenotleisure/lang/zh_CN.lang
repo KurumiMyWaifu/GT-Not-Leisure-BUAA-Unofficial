@@ -34,6 +34,9 @@ commands.kill.success.multiple=杀死了%s个实体
 GT5U.gui.text.recipe_result.parallel_overflow=§4并行溢出
 GT5U.gui.text.recipe_result.parallel_zero=§4并行不足，检查你的输入是否满足配方或机器要求
 GT5U.gui.text.recipe_result.crash=§4很抱歉，你的机器出现了一些问题……        如果要寻求帮助，请把错误报告和日志文件发给对方，而不是发送这个窗口的照片或者截图或者文本。
+GT5U.gui.text.recipe_result.invalid_hatch_configuration=§4转子仓配置无效：需要 4 个装有有效涡轮的转子仓
+GT5U.nei.heat_capacity=炉温：%s K
+GT5U.nei.heat_capacity.material=线圈：%s
 
 gtnl.gui.config.general=GTNL 总览配置
 gtnl.gui.config.general.debug=调试设置
