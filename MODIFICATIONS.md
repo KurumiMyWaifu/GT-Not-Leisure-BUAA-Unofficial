@@ -8,7 +8,10 @@ affiliated with, endorsed by, or supported by the upstream authors.
 - Upstream version string: `0.2.7-pre3-dev-290.37+082483e468`
 - Target modpack: GT: New Horizons `2.9.0-beta-3` (Minecraft 1.7.10, Forge 10.13.4.1614)
 - Modification date: **2026-10-18** (glass replacement); **2026-10-20**
-  (client crash fixes); **2026-10-24** (casing names and petri dish non-consumption)
+  (client crash fixes); **2026-10-24** (casing names and petri dish non-consumption);
+  **2026-10-30** (Super Space Elevator glass fix); **2026-11-06**
+  (wireless 32k fix, assembly-line sub-panel fix, HighwayToHell rotor fix,
+  coil tooltip translation override)
 - Modified by: `KurumiMyWaifu` (`https://github.com/KurumiMyWaifu`)
 - License of the modifications: **GNU Lesser General Public License v3.0
   (LGPL-3.0)**, the same license as the upstream project. See `LICENSE.txt`.
@@ -176,6 +179,119 @@ File:
 
 - `src/main/java/com/science/gtnl/common/recipe/gtnl/PetrochemicalPlantRecipes.java`
 
+### 8. Super Space Elevator glass block (2026-10-30)
+
+The Super Space Elevator structure used:
+
+```java
+ofBlock(bw_realglas, 14)
+```
+
+BartWorks `bw_realglas` only has metadata `0` through `10`; metadata `14`
+is outside the block's texture array and has no localization, which is why it
+displayed as `BW_TieredGlass.14.name` / `BW_glasstier.14.name` and could not
+be crafted.
+
+It is replaced with `GTStructureUtility.chainAllGlasses()`, the same generic
+tiered-glass element used by other GTNL structures. It accepts the registered
+BartWorks borosilicate glasses (including the valid `bw_realglas` and
+`bw_realglas2` metadata), GT glasses, and the other glasses registered in
+`GlassTier`.
+
+The same invalid `bw_realglas, 14` reference in `OreExtractionModule` is fixed
+the same way.
+
+Files:
+
+- `src/main/java/com/science/gtnl/common/machine/multiblock/SuperSpaceElevator.java`
+- `src/main/java/com/science/gtnl/common/machine/multiblock/module/nanitesIntegratedProcessingCenter/OreExtractionModule.java`
+
+### 9. Wireless output 32k GUI crash (2026-11-06)
+
+The wireless processing loop appended every cycle's output array to the previous
+array. Long-running machines therefore accumulated a huge list of duplicate
+outputs; opening the GUI synced that list and the client echoed it back through
+the GT5U recipe-info `DynamicSyncHandler`, eventually exceeding the 32k custom
+payload limit.
+
+The fix merges outputs by type instead of concatenating arrays:
+
+- `Utils.mergeItemStacks()` merges by item + damage + NBT and sums stack sizes;
+- `Utils.mergeFluidStacks()` merges by fluid + NBT and sums amounts;
+- the wireless `checkProcessing()` methods clear stale outputs at the start;
+- all wireless output merge sites now use the type-aware helpers.
+
+Files:
+
+- `src/main/java/com/science/gtnl/utils/Utils.java`
+- `src/main/java/com/science/gtnl/common/machine/multiMachineBase/WirelessEnergyMultiMachineBase.java`
+- `src/main/java/com/science/gtnl/common/machine/multiblock/wireless/HighwayToHell.java`
+- `src/main/java/com/science/gtnl/common/machine/multiblock/wireless/TransliminalOasis.java`
+- `src/main/java/com/science/gtnl/common/machine/multiblock/wireless/NineIndustrialMultiMachine.java`
+- `src/main/java/com/science/gtnl/common/machine/multiblock/structuralReconstructionPlan/KuangBiaoOneGiantNuclearFusionReactor.java`
+
+### 10. Grand Assembly Line minimum-recipe-time sub-panel crash (2026-11-06)
+
+`GrandAssemblyLineGui` created its sub-panel with the sub-panel's own
+`PanelSyncManager`, but the `grandAssemblyLineMinRecipeTime` handler was
+registered on the root `PanelSyncManager`. `createMinRecipeTimePanel()` therefore
+threw `NoSuchElementException` on the server when the panel was opened.
+
+The sub-panel builder now uses the captured root `syncManager`:
+
+```java
+(panelSyncManager, panelHandler) -> createMinRecipeTimePanel(parent, syncManager)
+```
+
+File:
+
+- `src/main/java/com/science/gtnl/common/gui/modularui/GrandAssemblyLineGui.java`
+
+### 11. HighwayToHell rotor assemblies (2026-11-06)
+
+`HighwayToHell` required four filled rotor assemblies during the structure
+check, but had no path to fill them: the GT++ `MTEHatchTurbine` GUI and
+inventory insertion are read-only, and only the XL turbine controllers call
+`insertTurbine()`.
+
+The structure now forms with empty rotor assemblies. `checkProcessing()`:
+
+1. pulls valid turbine rotors from the normal input buses into empty rotor
+   assemblies, one per hatch;
+2. requires exactly four rotor assemblies, each containing a valid turbine;
+3. if the rotors are missing/invalid, returns
+   `SimpleCheckRecipeResult.ofFailure("invalid_hatch_configuration")` and does
+   not run the crusher recipe;
+4. skips surplus valid turbines when deduplicating wireless inputs;
+5. computes `turbineTier` from the minimum turbine material tool quality
+   (initialized to `Integer.MAX_VALUE`), so the +1% output-chance bonus per
+   turbine tier actually applies.
+
+Files:
+
+- `src/main/java/com/science/gtnl/common/machine/multiblock/wireless/HighwayToHell.java`
+- `src/main/resources/assets/sciencenotleisure/lang/en_US.lang`
+- `src/main/resources/assets/sciencenotleisure/lang/zh_CN.lang`
+
+### 12. Coil tooltip “Format error” translation override (2026-11-06)
+
+The GT5U `HeatingCoilSpecialValueFormatter` passes one argument to
+`GT5U.nei.heat_capacity`; older Chinese translations used two `%s`
+placeholders, causing vanilla `StringTranslate` to return
+`Format error: 热容：%s K （%s）`.
+
+No GT5U class is patched in this build. Instead, `zh_CN.lang` now overrides the
+key with the single-placeholder form:
+
+```text
+GT5U.nei.heat_capacity=炉温：%s K
+GT5U.nei.heat_capacity.material=线圈：%s
+```
+
+The external translation pack should use the same single-placeholder form. The
+separate `gt5u-coil-tooltip-fix/` directory remains available for users who
+prefer the GT5U class patch instead of a translation override.
+
 ## Verification
 
 - `grep -r "blockAlloyGlass" src/` returns no matches.
@@ -192,6 +308,19 @@ File:
   with `Materials.Neutronium`.
 - The compiled Petrochemical Plant recipe passes `0` to
   `GTUtility.copyAmount(...)` for the Xenoxene Xenoxsis petri dish.
+- The compiled Super Space Elevator and Ore Extraction Module use
+  `GTStructureUtility.chainAllGlasses()` for their glass elements.
+- The compiled wireless output merge sites use `Utils.mergeItemStacks()` /
+  `Utils.mergeFluidStacks()` instead of `Utils.mergeArray()`.
+- The compiled `GrandAssemblyLineGui` sub-panel lookup uses the root
+  `PanelSyncManager`.
+- The compiled `HighwayToHell` no longer rejects empty rotor assemblies during
+  `checkHatch`, pulls turbines from input buses in `checkProcessing`, returns
+  `invalid_hatch_configuration` when fewer than four valid rotors are present,
+  and initializes `turbineTier` to `Integer.MAX_VALUE` before taking the
+  material-quality minimum.
+- `zh_CN.lang` contains the single-placeholder `GT5U.nei.heat_capacity` and
+  `GT5U.nei.heat_capacity.material` entries.
 - `gradle assemble` completes successfully.
 
 ## Building
@@ -205,8 +334,22 @@ Requirements:
 Build the production jar with:
 
 ```bash
-./gradlew assemble
+VERSION=0.2.7-pre3-dev-290.37+082483e468 ./gradlew assemble
 ```
+
+`VERSION` is needed when the source directory is not a Git repository; otherwise
+the jar and `mcmod.info` are stamped `NO-GIT-TAG-SET`.
+
+If Blowdryer cannot reach its GitHub settings source (for example due to a
+certificate/network issue), temporarily set:
+
+```properties
+gtnh.settings.blowdryerTag = LOCAL
+```
+
+The repository already contains `gtnhShared/spotless.gradle`,
+`spotless.eclipseformat.xml`, and `spotless.importorder`, so an offline build
+still has the code-style files. Restore the upstream value `0.2.2` afterwards.
 
 The output jar is written to `build/libs/`.
 
